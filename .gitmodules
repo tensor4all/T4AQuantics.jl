@@ -31,3 +31,6 @@
 [submodule "T4ARegistrator.jl"]
 	path = T4ARegistrator.jl
 	url = git@github.com:tensor4all/T4ARegistrator.jl.git
+[submodule "T4ATemplate.jl"]
+	path = T4ATemplate.jl
+	url = git@github.com:tensor4all/T4ATemplate.jl.git

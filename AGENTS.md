@@ -22,6 +22,10 @@
 
 - The `gh` (GitHub CLI) command is available locally and can be used for GitHub-related operations
 
+- **Never push directly to main branch**: All changes must be made through pull requests. Create a branch, commit changes, push the branch, and create a PR. Wait for CI workflows to pass before merging.
+
+- **Never use force push to main branch**: Force pushing (including `--force-with-lease`) to main is prohibited. If you need to rewrite history, do it on a feature branch and create a PR.
+
 - All libraries are under the [tensor4all GitHub organization](https://github.com/tensor4all)
 
 - Some libraries are registered in T4ARegistry. Use T4ARegistrator.jl to register them. T4ARegistrator.jl is a development tool that should be installed in the global environment, not added as a dependency in individual package Project.toml files. When manually registering packages in T4ARegistry, use HTTPS URLs (not SSH) in the `repo` field of Package.toml to ensure compatibility in environments without SSH access

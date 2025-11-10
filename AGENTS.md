@@ -24,6 +24,6 @@
 
 - All libraries are under the [tensor4all GitHub organization](https://github.com/tensor4all)
 
-- Some libraries are registered in T4ARegistry. Use T4ARegistrator.jl to register them
+- Some libraries are registered in T4ARegistry. Use T4ARegistrator.jl to register them. When manually registering packages in T4ARegistry, use HTTPS URLs (not SSH) in the `repo` field of Package.toml to ensure compatibility in environments without SSH access
 
 - Some libraries are already registered in the official Julia registry. To register a new version, comment `@JuliaRegistrator register` in the library's issue, and the bot will create a PR to the official registry

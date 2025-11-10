@@ -1,0 +1,12 @@
+[submodule "TensorCrossInterpolation.jl"]
+	path = TensorCrossInterpolation.jl
+	url = git@github.com:tensor4all/TensorCrossInterpolation.jl.git
+[submodule "QuanticsGrids.jl"]
+	path = QuanticsGrids.jl
+	url = git@github.com:tensor4all/QuanticsGrids.jl.git
+[submodule "QuanticsTCI.jl"]
+	path = QuanticsTCI.jl
+	url = git@github.com:tensor4all/QuanticsTCI.jl.git
+[submodule "T4APlutoExamples"]
+	path = T4APlutoExamples
+	url = git@github.com:tensor4all/T4APlutoExamples.git

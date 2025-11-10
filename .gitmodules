@@ -37,3 +37,6 @@
 [submodule "Tensor4All.jl"]
 	path = Tensor4All.jl
 	url = git@github.com:tensor4all/Tensor4All.jl.git
+[submodule "T4AITensorCompat.jl"]
+	path = T4AITensorCompat.jl
+	url = git@github.com:tensor4all/T4AITensorCompat.jl.git

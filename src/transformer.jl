@@ -19,7 +19,7 @@ f(x) = g(-x)
 where f(x) = M * g(x) for x = 0, 1, ..., 2^R-1.
 """
 function flipop_to_negativedomain(sites::Vector{Index{T}}; rev_carrydirec=false,
-        bc::Int=1)::MPO where {T}
+        bc::Int=1)::TensorTrain where {T}
     return flipop(sites; rev_carrydirec=rev_carrydirec, bc=bc) * bc
 end
 
@@ -30,10 +30,10 @@ where f(x) = M * g(x) for x = 0, 1, ..., 2^R-1.
 
 `sites`: the sites of the output MPS
 """
-function flipop(sites::Vector{Index{T}}; rev_carrydirec=false, bc::Int=1)::MPO where {T}
+function flipop(sites::Vector{Index{T}}; rev_carrydirec=false, bc::Int=1)::TensorTrain where {T}
     if rev_carrydirec
         M = flipop(reverse(sites); rev_carrydirec=false, bc=bc)
-        return MPO([M[n] for n in reverse(1:length(M))])
+        return TensorTrain([M[n] for n in reverse(1:length(M))])
     end
 
     N = length(sites)
@@ -41,7 +41,7 @@ function flipop(sites::Vector{Index{T}}; rev_carrydirec=false, bc::Int=1)::MPO w
     N > 1 || error("MPO with one tensor is not supported")
 
     t = _single_tensor_flip()
-    M = MPO(N)
+    M = TensorTrain(N)
     links = [Index(2, "Link,l=$l") for l in 1:(N + 1)]
     for n in 1:N
         M[n] = ITensor(t, (links[n], links[n + 1], sites[n]', sites[n]))
@@ -63,12 +63,14 @@ where x = 0, 1, ..., N-1 and N = 2^R.
 
 Note that x = 0, 1, 2, ..., N-1 are mapped to x = 0, N-1, N-2, ..., 1 mod N.
 """
-function reverseaxis(M::MPS; tag="x", bc::Int=1, kwargs...)
+function reverseaxis(M::TensorTrain; tag="x", bc::Int=1, kwargs...)
     bc ∈ [1, -1] || error("bc must be either 1 or -1")
-    return _apply(reverseaxismpo(siteinds(M); tag=tag, bc=bc), M; kwargs...)
+    sites_flat = collect(Iterators.flatten(siteinds(M)))
+    sites_vec = Vector{Index{Int}}(sites_flat)
+    return _apply(reverseaxismpo(sites_vec; tag=tag, bc=bc), M; alg="naive", kwargs...)
 end
 
-function reverseaxismpo(sites::AbstractVector{Index{T}}; tag="x", bc::Int=1)::MPO where {T}
+function reverseaxismpo(sites::AbstractVector{Index{T}}; tag="x", bc::Int=1)::TensorTrain where {T}
     bc ∈ [1, -1] || error("bc must be either 1 or -1")
     targetsites = findallsiteinds_by_tag(sites; tag=tag)
     pos = findallsites_by_tag(sites; tag=tag)
@@ -82,16 +84,18 @@ end
 """
 f(x) = g(x + shift) for x = 0, 1, ..., 2^R-1 and 0 <= shift < 2^R.
 """
-function shiftaxis(M::MPS, shift::Int; tag="x", bc::Int=1, kwargs...)
+function shiftaxis(M::TensorTrain, shift::Int; tag="x", bc::Int=1, kwargs...)
     bc ∈ [1, -1] || error("bc must be either 1 or -1")
-    return _apply(shiftaxismpo(siteinds(M), shift; tag=tag, bc=bc), M; kwargs...)
+    sites_flat = collect(Iterators.flatten(siteinds(M)))
+    sites_vec = Vector{Index{Int}}(sites_flat)
+    return _apply(shiftaxismpo(sites_vec, shift; tag=tag, bc=bc), M; alg="naive", kwargs...)
 end
 
 """
 f(x) = g(x + shift) for x = 0, 1, ..., 2^R-1 and 0 <= shift < 2^R.
 """
 function shiftaxismpo(
-        sites::AbstractVector{Index{T}}, shift::Int; tag="x", bc::Int=1)::MPO where {T}
+        sites::AbstractVector{Index{T}}, shift::Int; tag="x", bc::Int=1)::TensorTrain where {T}
     bc ∈ [1, -1] || error("bc must be either 1 or -1")
     targetsites = findallsiteinds_by_tag(sites; tag=tag) # From left to right: x=1, 2, ...
     pos = findallsites_by_tag(sites; tag=tag)
@@ -105,7 +109,7 @@ function shiftaxismpo(
         transformer = _shift_mpo(targetsites, shift_mod; bc=bc)
     else
         transformer = _shift_mpo(targetsites, shift_mod; bc=bc)
-        transformer = MPO([transformer[n] for n in reverse(1:length(transformer))])
+        transformer = TensorTrain([transformer[n] for n in reverse(1:length(transformer))])
     end
     transformer = matchsiteinds(transformer, sites)
     transformer *= bc^nbc
@@ -116,9 +120,11 @@ end
 """
 Multiply by exp(i θ x), where x = (x_1, ..., x_R)_2.
 """
-function phase_rotation(M::MPS, θ::Real; targetsites=nothing, tag="", kwargs...)::MPS
-    transformer = phase_rotation_mpo(siteinds(M), θ; targetsites=targetsites, tag=tag)
-    _apply(transformer, M; kwargs...)
+function phase_rotation(M::TensorTrain, θ::Real; targetsites=nothing, tag="", kwargs...)::TensorTrain
+    sites_flat = collect(Iterators.flatten(siteinds(M)))
+    sites_vec = Vector{Index{Int}}(sites_flat)
+    transformer = phase_rotation_mpo(sites_vec, θ; targetsites=targetsites, tag=tag)
+    _apply(transformer, M; alg="naive", kwargs...)
 end
 
 """
@@ -127,13 +133,13 @@ Create an MPO for multiplication by `exp(i θ x)`, where `x = (x_1, ..., x_R)_2`
 `sites`: site indices for `x_1`, `x_2`, ..., `x_R`.
 """
 function phase_rotation_mpo(sites::AbstractVector{Index{T}}, θ::Real;
-        targetsites=nothing, tag="")::MPO where {T}
+        targetsites=nothing, tag="")::TensorTrain where {T}
     _, target_sites = _find_target_sites(sites; sitessrc=targetsites, tag=tag)
     transformer = _phase_rotation_mpo(target_sites, θ)
     return matchsiteinds(transformer, sites)
 end
 
-function _phase_rotation_mpo(sites::AbstractVector{Index{T}}, θ::Real)::MPO where {T}
+function _phase_rotation_mpo(sites::AbstractVector{Index{T}}, θ::Real)::TensorTrain where {T}
     R = length(sites)
     tensors = [ITensor(true) for _ in 1:R]
     θ_mod = mod(θ, 2π)
@@ -154,7 +160,7 @@ function _phase_rotation_mpo(sites::AbstractVector{Index{T}}, θ::Real)::MPO whe
         Array(tensors[end], sites[end]', sites[end]), links[end], sites[end], sites[end]')
 
     setprecision(BigFloat, p_back)
-    return MPO(tensors)
+    return TensorTrain(tensors)
 end
 
 function _upper_lower_triangle(upper_or_lower::Symbol)::Array{Float64,4}
@@ -183,13 +189,13 @@ end
 Create QTT for a upper/lower triangle matrix filled with one except the diagonal line
 """
 function upper_lower_triangle_matrix(sites::Vector{Index{T}}, value::S;
-        upper_or_lower::Symbol=:upper)::MPO where {T,S}
+        upper_or_lower::Symbol=:upper)::TensorTrain where {T,S}
     upper_or_lower ∈ [:upper, :lower] || error("Invalid upper_or_lower $(upper_or_lower)")
     N = length(sites)
 
     t = _upper_lower_triangle(upper_or_lower)
 
-    M = MPO(N)
+    M = TensorTrain(N)
     links = [Index(2, "Link,l=$l") for l in 1:(N + 1)]
     for n in 1:N
         M[n] = ITensor(t, (links[n], links[n + 1], sites[n]', sites[n]))
@@ -216,12 +222,12 @@ end
 Add new site indices to an MPS
 """
 #==
-function asdiagonal(M::MPS, newsites; which_new="right", targetsites=nothing, tag="")
+function asdiagonal(M::TensorTrain, newsites; which_new="right", targetsites=nothing, tag="")
     which_new ∈ ["left", "right"] || error("Invalid which_new: left or right")
-    sitepos, target_sites = Quantics._find_target_sites(M; sitessrc=targetsites, tag=tag)
+    sitepos, target_sites = T4AQuantics._find_target_sites(M; sitessrc=targetsites, tag=tag)
     length(sitepos) == length(newsites) ||
         error("Length mismatch: $(newsites) vs $(target_sites)")
-    M_ = Quantics._addedges(M)
+    M_ = T4AQuantics._addedges(M)
     links = linkinds(M_)
 
     tensors = ITensor[]
@@ -247,8 +253,8 @@ function asdiagonal(M::MPS, newsites; which_new="right", targetsites=nothing, ta
     tensors[1] *= onehot(links[1] => 1)
     tensors[end] *= onehot(links[end] => 1)
 
-    M_result = MPS(tensors)
-    Quantics.cleanup_linkinds!(M_result)
+    M_result = TensorTrain(tensors)
+    T4AQuantics.cleanup_linkinds!(M_result)
     return M_result
 end
 ==#

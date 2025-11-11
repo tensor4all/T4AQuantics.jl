@@ -1,7 +1,7 @@
 @testitem "affine" begin
     using Test
     using ITensors
-    using Quantics
+    using T4AQuantics
     using LinearAlgebra
 
     # Test results of affine_transform_matrix()
@@ -15,9 +15,9 @@
         for x_vals in Iterators.product(xranges...), y_vals in Iterators.product(yranges...)
             x = collect(x_vals)  # Convert input tuple to a vector
             Axb = A * x .+ b  # Apply the affine transformation
-            if boundary == Quantics.PeriodicBoundaryConditions()
+            if boundary == T4AQuantics.PeriodicBoundaryConditions()
                 Axb = mod.(Axb, 2^R)
-            elseif boundary == Quantics.OpenBoundaryConditions()
+            elseif boundary == T4AQuantics.OpenBoundaryConditions()
                 Axb = map(x -> 0 <= x <= 2^R - 1 ? x : nothing, Axb)
             end
             ref = Axb == collect(y_vals)  # Compare to the reference output
@@ -40,18 +40,18 @@
     vars = ("x", "y", "z")
     insite = [Index(2; tags="$v$l") for l in 1:10, v in vars]
     outsite = [Index(2; tags="$v$l")' for l in 1:10, v in vars]
-    boundaries = Quantics.OpenBoundaryConditions(), Quantics.PeriodicBoundaryConditions()
+    boundaries = T4AQuantics.OpenBoundaryConditions(), T4AQuantics.PeriodicBoundaryConditions()
 
     @testset "full" begin
         A = [1 0; 1 1]
         b = [0; 0]
 
-        T = Quantics.affine_transform_matrix(4, A, b)
+        T = T4AQuantics.affine_transform_matrix(4, A, b)
         @test T' * T == I
         @test T[219, 59] == 1
 
         b = [4; 1]
-        T = Quantics.affine_transform_matrix(4, A, b)
+        T = T4AQuantics.affine_transform_matrix(4, A, b)
         @test T * T' == I
     end
 
@@ -61,7 +61,7 @@
         for (A, b) in testtests[(M, N)]
             A_ = reshape(A, M, N)
             b_ = reshape(b, M)
-            T = Quantics.affine_transform_matrix(R, A_, b_, boundary)
+            T = T4AQuantics.affine_transform_matrix(R, A_, b_, boundary)
             test_affine_transform_matrix_multi_variables(R, A_, b_, T, boundary)
         end
     end
@@ -70,10 +70,10 @@
         b = [0; 0]
         R = 3
 
-        T = Quantics.affine_transform_matrix(R, A, b)
-        mpo = Quantics.affine_transform_mpo(
+        T = T4AQuantics.affine_transform_matrix(R, A, b)
+        mpo = T4AQuantics.affine_transform_mpo(
             outsite[1:R, 1:2], insite[1:R, 1:2], A, b)
-        Trec = Quantics.affine_mpo_to_matrix(
+        Trec = T4AQuantics.affine_mpo_to_matrix(
             outsite[1:R, 1:2], insite[1:R, 1:2], mpo)
         @test T == Trec
     end
@@ -83,11 +83,11 @@
         b = [11; 23; -15]
         R = 4
 
-        T = Quantics.affine_transform_matrix(R, A, b)
+        T = T4AQuantics.affine_transform_matrix(R, A, b)
         M, N = size(A)
-        mpo = Quantics.affine_transform_mpo(
+        mpo = T4AQuantics.affine_transform_mpo(
             outsite[1:R, 1:M], insite[1:R, 1:N], A, b)
-        Trec = Quantics.affine_mpo_to_matrix(
+        Trec = T4AQuantics.affine_mpo_to_matrix(
             outsite[1:R, 1:M], insite[1:R, 1:N], mpo)
         @test T == Trec
     end
@@ -97,11 +97,11 @@
         b = [11; -3]
         R = 4
 
-        T = Quantics.affine_transform_matrix(R, A, b)
+        T = T4AQuantics.affine_transform_matrix(R, A, b)
         M, N = size(A)
-        mpo = Quantics.affine_transform_mpo(
+        mpo = T4AQuantics.affine_transform_mpo(
             outsite[1:R, 1:M], insite[1:R, 1:N], A, b)
-        Trec = Quantics.affine_mpo_to_matrix(
+        Trec = T4AQuantics.affine_mpo_to_matrix(
             outsite[1:R, 1:M], insite[1:R, 1:N], mpo)
         @test T == Trec
     end
@@ -112,11 +112,11 @@
 
         for R in [1, 3, 6]
             for bc in boundaries
-                T = Quantics.affine_transform_matrix(R, A, b, bc)
+                T = T4AQuantics.affine_transform_matrix(R, A, b, bc)
                 M, N = size(A)
-                mpo = Quantics.affine_transform_mpo(
+                mpo = T4AQuantics.affine_transform_mpo(
                     outsite[1:R, 1:M], insite[1:R, 1:N], A, b, bc)
-                Trec = Quantics.affine_mpo_to_matrix(
+                Trec = T4AQuantics.affine_mpo_to_matrix(
                     outsite[1:R, 1:M], insite[1:R, 1:N], mpo)
                 @test T == Trec
             end
@@ -129,12 +129,12 @@
         for b in [[3], [5], [-3], [-5]]
             for R in [3, 5]
                 #for bc in boundaries
-                for bc in [Quantics.PeriodicBoundaryConditions()]
-                    T = Quantics.affine_transform_matrix(R, A, b, bc)
+                for bc in [T4AQuantics.PeriodicBoundaryConditions()]
+                    T = T4AQuantics.affine_transform_matrix(R, A, b, bc)
                     M, N = size(A)
-                    mpo = Quantics.affine_transform_mpo(
+                    mpo = T4AQuantics.affine_transform_mpo(
                         outsite[1:R, 1:M], insite[1:R, 1:N], A, b, bc)
-                    Trec = Quantics.affine_mpo_to_matrix(
+                    Trec = T4AQuantics.affine_mpo_to_matrix(
                         outsite[1:R, 1:M], insite[1:R, 1:N], mpo)
                     @test T == Trec
                 end
@@ -148,11 +148,11 @@
 
         for R in [3, 4]
             for bc in boundaries
-                T = Quantics.affine_transform_matrix(R, A, b, bc)
+                T = T4AQuantics.affine_transform_matrix(R, A, b, bc)
                 M, N = size(A)
-                mpo = Quantics.affine_transform_mpo(
+                mpo = T4AQuantics.affine_transform_mpo(
                     outsite[1:R, 1:M], insite[1:R, 1:N], A, b, bc)
-                Trec = Quantics.affine_mpo_to_matrix(
+                Trec = T4AQuantics.affine_mpo_to_matrix(
                     outsite[1:R, 1:M], insite[1:R, 1:N], mpo)
                 @test T == Trec
             end

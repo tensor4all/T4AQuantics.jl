@@ -121,13 +121,15 @@ where a, b, c, d = +/- 1, 0, and s1, s1 are arbitrary integers.
 
 `bc` is a vector of boundary conditions for each arguments of `g` (not of `f`).
 """
-function affinetransform(M::MPS,
+function affinetransform(M::TensorTrain,
         tags::AbstractVector{String},
         coeffs_dic::AbstractVector{Dict{String,Int}},
         shift::AbstractVector{Int},
         bc::AbstractVector{Int};
         kwargs...)
-    transformer = affinetransformmpo(siteinds(M), tags, coeffs_dic, shift, bc)
+    sites_flat = collect(Iterators.flatten(siteinds(M)))
+    sites_vec = Vector{Index{Int}}(sites_flat)
+    transformer = affinetransformmpo(sites_vec, tags, coeffs_dic, shift, bc)
     return _apply(transformer, M; kwargs...)
 end
 
@@ -135,13 +137,13 @@ function affinetransformmpo(sites::AbstractVector{Index{T}},
         tags::AbstractVector{String},
         coeffs_dic::AbstractVector{Dict{String,Int}},
         shift::AbstractVector{Int},
-        bc::AbstractVector{Int})::MPO where {T}
+        bc::AbstractVector{Int})::TensorTrain where {T}
     # f(x, y) = g(a * x + b * y + s1, c * x + d * y + s2)
     #         = h(a * x + b * y,      c * x + d * y),
     # where h(x, y) = g(x + s1, y + s2).
     # The transformation is executed in this order: g -> h -> f.
 
-    mpos = MPO[]
+    mpos = TensorTrain[]
 
     # Number of variables involved in transformation
     ntransvars = length(tags)
@@ -185,12 +187,14 @@ end
 Affine transform of a MPS with no shift
 Significant bits are assumed to be aligned from left to right for all tags.
 """
-function affinetransform(M::MPS,
+function affinetransform(M::TensorTrain,
         tags::AbstractVector{String},
         coeffs_dic::AbstractVector{Dict{String,Int}},
         bc::AbstractVector{Int};
         kwargs...)
-    transformer = affinetransformmpo(siteinds(M), tags, coeffs_dic, bc)
+    sites_flat = collect(Iterators.flatten(siteinds(M)))
+    sites_vec = Vector{Index{Int}}(sites_flat)
+    transformer = affinetransformmpo(sites_vec, tags, coeffs_dic, bc)
     return _apply(transformer, M; kwargs...)
 end
 
@@ -201,8 +205,8 @@ Significant bits are assumed to be aligned from left to right for all tags.
 function affinetransformmpo(sites::AbstractVector{Index{T}},
         tags::AbstractVector{String},
         coeffs_dic::AbstractVector{Dict{String,Int}},
-        bc::AbstractVector{Int})::MPO where {T}
-    mpos = MPO[]
+        bc::AbstractVector{Int})::TensorTrain where {T}
+    mpos = TensorTrain[]
 
     # f(x, y) = g(a * x + b * y + s1, c * x + d * y + s2)
     #         = h(a * x + b * y,      c * x + d * y),
@@ -275,7 +279,7 @@ function affinetransformmpo(sites::AbstractVector{Index{T}},
     if !rev_carrydirec
         transformer_ = affinetransformmpo(
             reverse(sites), reverse(tags), reverse(coeffs_dic), reverse(bc))
-        return MPO([transformer_[n] for n in reverse(1:length(transformer_))])
+        return TensorTrain([transformer_[n] for n in reverse(1:length(transformer_))])
     end
 
     # First check transformations with -1 and -1; e.g., (a, b) = (-1, -1)
@@ -426,7 +430,7 @@ function _binaryop_mpo_backend(sites::Vector{Index{T}},
 
     _removeedges!(tensors, sites)
 
-    M = truncate(MPO(tensors); cutoff=1e-25)
+    M = truncate(TensorTrain(tensors); cutoff=1e-25)
     cleanup_linkinds!(M)
 
     return M
@@ -443,7 +447,7 @@ function _shift_mpo(sites::Vector{Index{T}}, shift::Int; bc::Int=1) where {T<:Nu
     R = length(sites)
     0 <= shift <= 2^R - 1 || error("Invalid shift")
 
-    ys = Quantics.tobin(shift, R)
+    ys = T4AQuantics.tobin(shift, R)
 
     links = Index{T}[]
     tensors = ITensor[]
@@ -452,7 +456,7 @@ function _shift_mpo(sites::Vector{Index{T}}, shift::Int; bc::Int=1) where {T<:Nu
         cin_on = n != R
         cout_on = n != 1
         sitey = Index(2, "Qubit, y")
-        t, link_in, link_out = Quantics._binaryop_tensor(1, 1, sites[n]', sitey, sites[n],
+        t, link_in, link_out = T4AQuantics._binaryop_tensor(1, 1, sites[n]', sitey, sites[n],
             cin_on, cout_on, bc)
         t *= onehot(sitey => ys[n] + 1)
         if n < R
@@ -471,5 +475,5 @@ function _shift_mpo(sites::Vector{Index{T}}, shift::Int; bc::Int=1) where {T<:Nu
         push!(tensors, t)
     end
 
-    MPO(tensors)
+    TensorTrain(tensors)
 end

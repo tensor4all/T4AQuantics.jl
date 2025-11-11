@@ -1,21 +1,35 @@
 @testitem "util.jl" begin
     using Test
-    import PartitionedMPSs: PartitionedMPSs, SubDomainMPS, PartitionedMPS, project,
+    import T4APartitionedMPSs: T4APartitionedMPSs, SubDomainMPS, PartitionedMPS, project,
                             isprojectedat
-    import Quantics
+    import T4AQuantics
     using ITensors
-    using ITensors.SiteTypes: siteinds
-    using ITensorMPS: randomMPS, randomMPO, random_mps, MPO, MPS
+    import T4AITensorCompat: random_mps, random_mpo, TensorTrain, siteinds, linkind, linkinds
 
     include("_util.jl")
 
     @testset "_replace_mpo_siteinds!" begin
         nbit = 3
-        sites = siteinds("Qubit", nbit)
-        M = MPO(ComplexF64, sites, ["Y" for n in 1:nbit])
+        sites = [Index(2, "Qubit, n=$n") for n in 1:nbit]
+        # Create MPO manually with Y operators
+        sites_pairs = [[s, s'] for s in sites]
+        M = TensorTrain(ComplexF64, sites_pairs, 1)
+        # Set Y operator on each site
+        Y = [0 -im; im 0]
+        links = linkinds(M)
+        for n in 1:nbit
+            inds_list = [sites[n]', sites[n]]
+            if n > 1
+                push!(inds_list, links[n-1])
+            end
+            if n < nbit
+                push!(inds_list, links[n])
+            end
+            M[n] = ITensor(Y, inds_list...)
+        end
 
         sites2 = [Index(2, "n=$n") for n in 1:nbit]
-        Quantics._replace_mpo_siteinds!(M, sites, sites2)
+        T4AQuantics._replace_mpo_siteinds!(M, sites, sites2)
 
         @test all([!hasind(M[n], sites[n]) for n in 1:nbit])
         @test all([!hasind(M[n], sites[n]') for n in 1:nbit])
@@ -31,7 +45,7 @@
         csites = [Index(4, "csite=$s") for s in 1:2]
         M = randomMPS(sites; linkdims=2)
 
-        Mc = Quantics.combinesiteinds(M, csites; targetsites=sites[2:5])
+        Mc = T4AQuantics.combinesiteinds(M, csites; targetsites=sites[2:5])
 
         @test length(Mc) == 4
         @test all(dim.(siteinds(Mc)) .== [2, 4, 4, 2])
@@ -42,10 +56,10 @@
         csites = [Index(4, "csite=$s") for s in 1:(nbit ÷ 2)]
         D = 3
         mps = randomMPS(csites; linkdims=D)
-        mps_split = Quantics.splitsiteind(mps, sites)
+        mps_split = T4AQuantics.splitsiteind(mps, sites)
         @test vec(Array(reduce(*, mps_split), sites)) ≈ vec(Array(reduce(*, mps), csites))
 
-        mps_reconst = Quantics.combinesiteinds(mps_split, csites)
+        mps_reconst = T4AQuantics.combinesiteinds(mps_split, csites)
         @test vec(Array(reduce(*, mps_reconst), csites)) ≈
               vec(Array(reduce(*, mps), csites))
     end
@@ -55,14 +69,14 @@
         sites = [Index(2^R, "csite=$s") for s in 1:nsites]
 
         bonddim = 3
-        mps = randomMPS(sites; linkdims=bonddim)
+        mps = random_mps(sites; linkdims=bonddim)
 
         newsites = [[Index(2, "n=$n,m=$m") for m in 1:R] for n in 1:nsites]
 
-        mps_split = Quantics.unfuse_siteinds(mps, sites, newsites)
+        mps_split = T4AQuantics.unfuse_siteinds(mps, sites, newsites)
 
         newsites_flatten = collect(Iterators.flatten(newsites))
-        @test newsites_flatten == siteinds(mps_split)
+        @test newsites_flatten == collect(Iterators.flatten(siteinds(mps_split)))
         @test vec(Array(reduce(*, mps_split), newsites_flatten)) ≈
               vec(Array(reduce(*, mps), sites))
     end
@@ -71,7 +85,7 @@
         nsite = 6
         sites = [Index(2, "Qubit, site=$n") for n in 1:nsite]
         tensor = randomITensor(sites)
-        tensors = Quantics.split_tensor(tensor, [sites[1:2], sites[3:4], sites[5:6]])
+        tensors = T4AQuantics.split_tensor(tensor, [sites[1:2], sites[3:4], sites[5:6]])
         @test tensor ≈ reduce(*, tensors)
     end
 
@@ -79,7 +93,7 @@
         nsite = 8
         sites = [Index(2, "Qubit, site=$n") for n in 1:nsite]
         tensor = randomITensor(sites)
-        tensors = Quantics.split_tensor(tensor, [sites[1:3], sites[4:5], sites[6:8]])
+        tensors = T4AQuantics.split_tensor(tensor, [sites[1:3], sites[4:5], sites[6:8]])
         @test length(inds(tensors[1])) == 4
         @test length(inds(tensors[2])) == 4
         @test length(inds(tensors[3])) == 4
@@ -92,9 +106,9 @@
 
         sites = [Index(physdim, "n=$n") for n in 1:(2N)]
         sites_sub = sites[1:2:end]
-        M = randomMPS(sites_sub) + randomMPS(sites_sub)
+        M = random_mps(sites_sub) + random_mps(sites_sub)
 
-        M_ext = Quantics.matchsiteinds(M, sites)
+        M_ext = T4AQuantics.matchsiteinds(M, sites)
 
         tensor = Array(reduce(*, M), sites_sub)
         tensor_reconst = zeros(Float64, fill(physdim, 2N)...)
@@ -111,9 +125,9 @@
         sites = [Index(physdim, "n=$n") for n in 1:(2N)]
         sites_A = sites[1:2:end]
         sites_B = sites[2:2:end]
-        M = randomMPO(sites_A) + randomMPO(sites_A)
+        M = random_mpo(sites_A) + random_mpo(sites_A)
 
-        M_ext = Quantics.matchsiteinds(M, sites)
+        M_ext = T4AQuantics.matchsiteinds(M, sites)
 
         tensor_ref = reduce(*, M) * reduce(*, [delta(s, s') for s in sites_B])
         tensor_reconst = reduce(*, M_ext)
@@ -129,9 +143,9 @@
         sites_B = sites[2:3:end]
         sites_C = sites[3:3:end]
         sites_BC = vcat(sites_B, sites_C)
-        M = randomMPO(sites_A) + randomMPO(sites_A)
+        M = random_mpo(sites_A) + random_mpo(sites_A)
 
-        M_ext = Quantics.matchsiteinds(M, sites)
+        M_ext = T4AQuantics.matchsiteinds(M, sites)
 
         tensor_ref = reduce(*, M) * reduce(*, [delta(s, s') for s in sites_BC])
         tensor_reconst = reduce(*, M_ext)
@@ -141,13 +155,14 @@
     @testset "combinsite" begin
         nrepeat = 3
         N = 3 * nrepeat
-        sites = siteinds("Qubit", N)
-        M = MPO(randomMPS(sites))
+        sites = [Index(2, "Qubit, n=$n") for n in 1:N]
+        # Create MPO directly
+        M = random_mpo(sites, 1)
         sites1 = sites[1:3:end]
         sites2 = sites[2:3:end]
         sites3 = sites[3:3:end]
         for n in 1:nrepeat
-            M = Quantics.combinesites(M, sites1[n], sites2[n])
+            M = T4AQuantics.combinesites(M, sites1[n], sites2[n])
         end
         flag = true
         for n in 1:nrepeat
@@ -158,11 +173,11 @@
     end
 
     @testset "_directprod" begin
-        sites1 = siteinds("Qubit", 2)
-        sites2 = siteinds("Qubit", 2)
-        M1 = randomMPS(sites1)
-        M2 = randomMPS(sites2)
-        M12 = Quantics._directprod(M1, M2)
+        sites1 = [Index(2, "Qubit, n=$n") for n in 1:2]
+        sites2 = [Index(2, "Qubit, n=$n") for n in 1:2]
+        M1 = random_mps(sites1)
+        M2 = random_mps(sites2)
+        M12 = T4AQuantics._directprod(M1, M2)
 
         M1_reconst = Array(reduce(*, M1), sites1)
         M2_reconst = Array(reduce(*, M2), sites2)
@@ -185,17 +200,17 @@
 
         sitesxy_fused = [[x, y] for (x, y) in zip(sitesx, sitesy)]
 
-        Ψ_fused = Quantics.rearrange_siteinds(Ψ, sitesxy_fused)
+        Ψ_fused = T4AQuantics.rearrange_siteinds(Ψ, sitesxy_fused)
 
         @test prod(Ψ) ≈ prod(Ψ_fused) # We reconstruct a full tensor, do not use it for large L
 
-        sitesxy_fused_ = siteinds(MPO(collect(Ψ_fused)))
+        sitesxy_fused_ = siteinds(Ψ_fused)
 
         for (x, y) in zip(sitesxy_fused, sitesxy_fused_)
             @test Set(x) == Set(y)
         end
 
-        Ψ_reconst = Quantics.rearrange_siteinds(Ψ_fused, [[x] for x in sitesxy])
+        Ψ_reconst = T4AQuantics.rearrange_siteinds(Ψ_fused, [[x] for x in sitesxy])
 
         @test Ψ ≈ Ψ_reconst
     end
@@ -216,17 +231,17 @@
             push!(sitesxyz_fused, [sitesz[i]])
         end
 
-        Ψ_fused = Quantics.rearrange_siteinds(Ψ, sitesxyz_fused)
+        Ψ_fused = T4AQuantics.rearrange_siteinds(Ψ, sitesxyz_fused)
 
         @test prod(Ψ) ≈ prod(Ψ_fused)
 
-        sitesxyz_fused_ = siteinds(MPO(collect(Ψ_fused)))
+        sitesxyz_fused_ = siteinds(Ψ_fused)
 
         for (x, y) in zip(sitesxyz_fused, sitesxyz_fused_)
             @test Set(x) == Set(y)
         end
 
-        Ψ_reconst = Quantics.rearrange_siteinds(Ψ_fused, [[x] for x in sitesxyz])
+        Ψ_reconst = T4AQuantics.rearrange_siteinds(Ψ_fused, [[x] for x in sitesxyz])
 
         @test Ψ ≈ Ψ_reconst
     end
@@ -238,7 +253,7 @@
 
         Ψ = random_mps(sitesx)
 
-        M = Quantics.makesitediagonal(Ψ, "x")
+        M = T4AQuantics.makesitediagonal(Ψ, "x")
 
         Ψ_recost = Array(prod(Ψ), sitesx...)
         M_recost = Array(prod(M), prime.(sitesx)..., sitesx...)
@@ -260,7 +275,7 @@
             sitesz = [Index(2, "z=$n") for n in 1:N]
             sites = collect(collect.(zip(sitesx, sitesy, sitesz)))
 
-            Ψ = MPS(collect(_random_mpo(sites)))
+            Ψ = _random_mpo(sites)
 
             prjΨ = SubDomainMPS(Ψ)
             prjΨ1 = project(prjΨ, Dict(sitesx[1] => 1))
@@ -271,10 +286,10 @@
                 push!(sites_rearranged, sitesxy[i])
                 push!(sites_rearranged, [sitesz[i]])
             end
-            prjΨ1_rearranged = Quantics.rearrange_siteinds(prjΨ1, sites_rearranged)
+            prjΨ1_rearranged = T4AQuantics.rearrange_siteinds(prjΨ1, sites_rearranged)
 
-            @test reduce(*, MPS(prjΨ1)) ≈ reduce(*, MPS(prjΨ1_rearranged))
-            @test PartitionedMPSs.siteinds(prjΨ1_rearranged) == sites_rearranged
+            @test reduce(*, TensorTrain(prjΨ1)) ≈ reduce(*, TensorTrain(prjΨ1_rearranged))
+            @test T4APartitionedMPSs.siteinds(prjΨ1_rearranged) == sites_rearranged
         end
 
         @testset "makesitediagonal and extractdiagonal" begin
@@ -287,18 +302,18 @@
             sitesz_vec = [[z] for z in sitesz]
             sites = [x for pair in zip(sitesxy_vec, sitesz_vec) for x in pair]
 
-            Ψ = MPS(collect(_random_mpo(sites)))
+            Ψ = _random_mpo(sites)
 
             prjΨ = SubDomainMPS(Ψ)
             prjΨ1 = project(prjΨ, Dict(sitesx[1] => 1))
 
-            prjΨ1_diagonalz = Quantics.makesitediagonal(prjΨ1, "y")
-            sites_diagonalz = Iterators.flatten(siteinds(prjΨ1_diagonalz))
+            prjΨ1_diagonalz = T4AQuantics.makesitediagonal(prjΨ1, "y")
+            sites_diagonalz = Iterators.flatten(T4APartitionedMPSs.siteinds(prjΨ1_diagonalz))
 
             psi_diag = prod(prjΨ1_diagonalz.data)
             psi = prod(prjΨ1.data)
 
-            @test Quantics.extractdiagonal(prjΨ1_diagonalz, "y") ≈ prjΨ1
+            @test T4AQuantics.extractdiagonal(prjΨ1_diagonalz, "y") ≈ prjΨ1
 
             for indval in eachindval(sites_diagonalz...)
                 ind = first.(indval)

@@ -4,6 +4,7 @@ using ITensors
 import ITensors
 using ITensors.SiteTypes: siteinds as ITensorsSiteTypes_siteinds
 import ITensors.NDTensors: Tensor, BlockSparseTensor, blockview
+import T4AITensorCompat
 using T4AITensorCompat: TensorTrain
 using T4AITensorCompat: findsite, linkinds, linkind, findsites, truncate!, siteinds, truncate
 
@@ -13,7 +14,7 @@ using StaticArrays
 import SparseArrays: sparse
 
 import QuanticsTCI
-using T4AITensorCompat: contract, Algorithm, apply
+using T4AITensorCompat: contract, Algorithm, apply, product
 
 using EllipsisNotation
 

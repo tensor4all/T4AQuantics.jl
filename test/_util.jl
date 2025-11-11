@@ -1,5 +1,5 @@
 using ITensors
-import ITensorMPS: random_mps
+import T4AITensorCompat: random_mps, TensorTrain
 using Random
 
 function _random_mpo(
@@ -13,7 +13,7 @@ function _random_mpo(
         push!(tensors, prod(Ψ[pos:(pos + length(sites[i]) - 1)]))
         pos += length(sites[i])
     end
-    return MPO(tensors)
+    return TensorTrain(tensors)
 end
 
 function _random_mpo(

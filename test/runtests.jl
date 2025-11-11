@@ -1,4 +1,4 @@
 using ReTestItems: runtests, @testitem
-using Quantics: Quantics
+using T4AQuantics: T4AQuantics
 
-runtests(Quantics)
+runtests(T4AQuantics)

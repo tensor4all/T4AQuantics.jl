@@ -29,7 +29,7 @@ function _qft(sites; cutoff::Float64=1e-25, sign::Int=1)
 
     sites_MPO = collect.(zip(prime.(sites), sites))
     fouriertt = QuanticsTCI.quanticsfouriermpo(R; sign=Float64(sign), normalize=true)
-    M = MPO(fouriertt; sites=sites_MPO)
+    M = TensorTrain(fouriertt; sites=sites_MPO)
 
     return truncate(M; cutoff)
 end
@@ -37,7 +37,7 @@ end
 abstract type AbstractFT end
 
 struct FTCore
-    forward::MPO
+    forward::TensorTrain
 
     function FTCore(sites; kwargs...)
         new(_qft(sites; kwargs...))
@@ -62,12 +62,12 @@ function forwardmpo(ftcore::FTCore, sites)
 end
 
 function backwardmpo(ftcore::FTCore, sites)
-    M = conj(MPO(reverse([x for x in ftcore.forward])))
+    M = conj(TensorTrain(reverse([x for x in ftcore.forward])))
     _replace_mpo_siteinds!(M, _extractsites(M), sites)
     return M
 end
 
-function _apply_qft(M::MPO, gsrc::MPS, target_sites, sitepos, sitesdst; kwargs...)
+function _apply_qft(M::TensorTrain, gsrc::TensorTrain, target_sites, sitepos, sitesdst; kwargs...)
     _replace_mpo_siteinds!(M, _extractsites(M), target_sites)
     M = matchsiteinds(M, siteinds(gsrc))
     gdst = _apply(M, gsrc; kwargs...)
@@ -103,7 +103,7 @@ where ``s = \pm 1``, ``x_0`` and ``y_0`` are constants, ``N=2^R``.
 Instead of specifying `sitessrc`, one can specify the source sites by setting `tag`.
 If `tag` = `x`, all sites with tags `x=1`, `x=2`, ... are used as `sitessrc`.
 """
-function fouriertransform(M::MPS;
+function fouriertransform(M::TensorTrain;
         sign::Int=1,
         tag::String="",
         sitessrc=nothing,
@@ -111,7 +111,8 @@ function fouriertransform(M::MPS;
         originsrc::Real=0.0,
         origindst::Real=0.0,
         cutoff_MPO=1e-25, kwargs...)
-    sites = siteinds(M)
+    sites_flat = collect(Iterators.flatten(siteinds(M)))
+    sites_vec = Vector{Index{Int}}(sites_flat)
     sitepos, target_sites = _find_target_sites(M; sitessrc=sitessrc, tag=tag)
 
     if sitesdst === nothing
@@ -127,14 +128,14 @@ function fouriertransform(M::MPS;
 
     # Prepare MPO for QFT
     MQ_ = _qft(target_sites; sign=sign, cutoff=cutoff_MPO)
-    MQ = matchsiteinds(MQ_, sites)
+    MQ = matchsiteinds(MQ_, sites_vec)
 
     # Phase shift from origindst
     M_result = phase_rotation(M, sign * 2π * BigFloat(origindst) / (BigFloat(2)^length(sitepos));
         targetsites=target_sites, kwargs...)
 
     # Apply QFT
-    M_result = _apply(MQ, M_result; kwargs...)
+    M_result = _apply(MQ, M_result; alg="naive", kwargs...)
 
     N = length(target_sites)
     for n in eachindex(target_sites)

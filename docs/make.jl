@@ -1,7 +1,7 @@
-using Quantics
+using T4AQuantics
 using Documenter
 
-DocMeta.setdocmeta!(Quantics, :DocTestSetup, :(using Quantics); recursive=true)
+DocMeta.setdocmeta!(T4AQuantics, :DocTestSetup, :(using T4AQuantics); recursive=true)
 
 makedocs(;
     modules=[Quantics],

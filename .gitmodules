@@ -7,9 +7,6 @@
 [submodule "QuanticsTCI.jl"]
 	path = QuanticsTCI.jl
 	url = git@github.com:tensor4all/QuanticsTCI.jl.git
-[submodule "T4APlutoExamples"]
-	path = T4APlutoExamples
-	url = git@github.com:tensor4all/T4APlutoExamples.git
 [submodule "TCIAlgorithms.jl"]
 	path = TCIAlgorithms.jl
 	url = git@github.com:tensor4all/TCIAlgorithms.jl.git
@@ -22,21 +19,6 @@
 [submodule "FastMPOContractions.jl"]
 	path = FastMPOContractions.jl
 	url = git@github.com:tensor4all/FastMPOContractions.jl.git
-[submodule "Quantics.jl"]
-	path = Quantics.jl
-	url = git@github.com:tensor4all/Quantics.jl.git
-[submodule "T4ARegistry"]
-	path = T4ARegistry
-	url = git@github.com:tensor4all/T4ARegistry.git
-[submodule "T4ARegistrator.jl"]
-	path = T4ARegistrator.jl
-	url = git@github.com:tensor4all/T4ARegistrator.jl.git
-[submodule "T4ATemplate.jl"]
-	path = T4ATemplate.jl
-	url = git@github.com:tensor4all/T4ATemplate.jl.git
-[submodule "Tensor4All.jl"]
-	path = Tensor4All.jl
-	url = git@github.com:tensor4all/Tensor4All.jl.git
 [submodule "T4AITensorCompat.jl"]
 	path = T4AITensorCompat.jl
 	url = git@github.com:tensor4all/T4AITensorCompat.jl.git

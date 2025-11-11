@@ -1,16 +1,21 @@
 @testitem "imaginarytime_tests.jl/imaginarytime" begin
     using Test
-    using Quantics
-    import Quantics
-    using ITensors: siteinds, Index
-    using ITensors.SiteTypes: op
+    using T4AQuantics
+    import T4AQuantics
+    using ITensors: Index
     import ITensors
     import SparseIR: Fermionic, Bosonic, FermionicFreq, valueim
 
-    import ITensorMPS: MPS, onehot
-    import QuanticsGrids as QG
+    import T4AITensorCompat: TensorTrain
+    # Conditionally import QuanticsGrids and QuanticsTCI
+    try
+        import QuanticsGrids as QG
+        import QuanticsTCI: quanticscrossinterpolate
+        has_qg = true
+    catch
+        has_qg = false
+    end
     import TensorCrossInterpolation as TCI
-    import QuanticsTCI: quanticscrossinterpolate
 
     function _test_data_imaginarytime(nbit, β)
         ω = 0.5
@@ -38,8 +43,8 @@
 
         gtau_smpl, giv_smpl = _test_data_imaginarytime(nbit, β)
 
-        sites = siteinds("Qubit", nbit)
-        gtau_mps = Quantics.decompose_gtau(gtau_smpl, sites; cutoff=1e-20)
+        sites = [Index(2, "Qubit,n=$n") for n in 1:nbit]
+        gtau_mps = T4AQuantics.decompose_gtau(gtau_smpl, sites; cutoff=1e-20)
 
         gtau_smpl_reconst = vec(Array(reduce(*, gtau_mps), reverse(sites)...))
 
@@ -56,8 +61,8 @@
 
         sitesτ = [Index(2, "Qubit,τ=$n") for n in 1:nbit]
         sitesiω = [Index(2, "Qubit,iω=$n") for n in 1:nbit]
-        gtau_mps = Quantics.decompose_gtau(gtau_smpl, sitesτ; cutoff=1e-20)
-        giv_mps = Quantics.to_wn(Fermionic(), gtau_mps, β; cutoff=1e-20, tag="τ",
+        gtau_mps = T4AQuantics.decompose_gtau(gtau_smpl, sitesτ; cutoff=1e-20)
+        giv_mps = T4AQuantics.to_wn(Fermionic(), gtau_mps, β; cutoff=1e-20, tag="τ",
             sitesdst=sitesiω)
 
         giv = vec(Array(reduce(*, giv_mps), reverse(sitesiω)...))
@@ -75,9 +80,9 @@
 
         sitesτ = [Index(2, "Qubit,τ=$n") for n in 1:nbit]
         sitesiω = [Index(2, "Qubit,iω=$n") for n in 1:nbit]
-        giv_mps = Quantics.decompose_giv(giv_smpl, sitesiω; cutoff=1e-20)
+        giv_mps = T4AQuantics.decompose_giv(giv_smpl, sitesiω; cutoff=1e-20)
 
-        gtau_mps = Quantics.to_tau(Fermionic(), giv_mps, β; cutoff=1e-20, tag="iω",
+        gtau_mps = T4AQuantics.to_tau(Fermionic(), giv_mps, β; cutoff=1e-20, tag="iω",
             sitesdst=sitesτ)
 
         gtau = vec(Array(reduce(*, gtau_mps), reverse(sitesτ)...))
@@ -89,6 +94,15 @@
 
 
     @testset "ImaginaryTimeFT.to_tau with large R" begin
+        # Skip this test if QuanticsGrids or QuanticsTCI is not available
+        try
+            import QuanticsGrids as QG
+            import QuanticsTCI: quanticscrossinterpolate
+        catch
+            @test_skip "QuanticsGrids or QuanticsTCI not available"
+            return
+        end
+        
         function fermionic_wn(n, β)
             return (2 * n + 1) * π / β
         end
@@ -97,8 +111,8 @@
             return 1.0 / (im * fermionic_wn(n, β) - ϵ)
         end
 
-        _evaluate(Ψ::MPS, sites, index::Vector{Int}) = only(reduce(
-            *, Ψ[n] * onehot(sites[n] => index[n]) for n in 1:length(Ψ)))
+        _evaluate(Ψ::TensorTrain, sites, index::Vector{Int}) = only(reduce(
+            *, Ψ[n] * ITensors.onehot(sites[n] => index[n]) for n in 1:length(Ψ)))
 
         β = 100.0
         R = 50
@@ -122,9 +136,12 @@
             ComplexF64, inv_iwn_tci, ngrid; tolerance=tol, maxbonddim=maxdim_TCI)
 
         inv_iwn_tt = TCI.TensorTrain(qtci2.tci)
-        iwmps = MPS(inv_iwn_tt; sites=sitesiω)
+        # Convert TensorCrossInterpolation.TensorTrain to ITensorMPS.MPS first
+        import ITensorMPS
+        iwmps_mps = ITensorMPS.MPS(inv_iwn_tt; sites=sitesiω)
+        iwmps = TensorTrain(iwmps_mps)
 
-        fourier_inv_iw = Quantics.to_tau(
+        fourier_inv_iw = T4AQuantics.to_tau(
             Fermionic(), iwmps, β; tag="iω", sitesdst=sitesτ, cutoff_MPO=cutoff_mpo,
             cutoff=cutoff_contract, maxdim=maxdim_contract, alg="naive")
 
@@ -136,17 +153,17 @@ end
 
 @testitem "imaginarytime_tests.jl/poletomps" begin
     using Test
-    using Quantics
-    import ITensors: siteinds, Index
+    using T4AQuantics
+    import ITensors: Index
     import ITensors
     import SparseIR: Fermionic, Bosonic, FermionicFreq, valueim
 
     @testset "poletomps" begin
         nqubit = 10
-        sites = siteinds("Qubit", nqubit)
+        sites = [Index(2, "Qubit,n=$n") for n in 1:nqubit]
         β = 10.0
         ω = 1.2
-        gtau = Quantics.poletomps(sites, β, ω)
+        gtau = T4AQuantics.poletomps(sites, β, ω)
         gtauvec = vec(Array(reduce(*, gtau), reverse(sites)))
         gtauf(τ) = -exp(-τ * ω) / (1 + exp(-β * ω))
         gtauref = gtauf.(LinRange(0, β, 2^nqubit + 1)[1:(end - 1)])
@@ -155,10 +172,10 @@ end
 
     @testset "poletomps_negative_pole" begin
         nqubit = 16
-        sites = siteinds("Qubit", nqubit)
+        sites = [Index(2, "Qubit,n=$n") for n in 1:nqubit]
         β = 1000.0
         ω = -10.0
-        gtau = Quantics.poletomps(Fermionic(), sites, β, ω)
+        gtau = T4AQuantics.poletomps(Fermionic(), sites, β, ω)
         gtauvec = vec(Array(reduce(*, gtau), reverse(sites)))
         gtauf(τ) = -exp((β - τ) * ω)
         gtauref = gtauf.(LinRange(0, β, 2^nqubit + 1)[1:(end - 1)])

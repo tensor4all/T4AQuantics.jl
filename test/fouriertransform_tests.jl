@@ -1,10 +1,9 @@
 
 @testitem "fouriertransform_tests.jl/qft_mpo" begin
     using Test
-    using Quantics
+    using T4AQuantics
     using ITensors
-    using ITensorMPS: randomMPS, MPO
-    using ITensors.SiteTypes: siteinds
+    import T4AITensorCompat: TensorTrain, truncate
     # A brute-force implementation of _qft (only for tests)
     function _qft_ref(sites; cutoff::Float64=1e-14, sign::Int=1)
         abs(sign) == 1 || error("sign must either 1 or -1")
@@ -23,15 +22,17 @@
         tmat = reshape(tmat, ntuple(x -> 2, 2 * nbit))
 
         trans_t = ITensor(tmat, reverse(sites)..., prime(sites)...)
-        M = MPO(trans_t, sites; cutoff=cutoff)
-        return M
+        # Create MPO sites: each site has [lower_index, upper_index]
+        sites_mpo = [[sites[n], prime(sites[n])] for n in 1:nbit]
+        M = TensorTrain(trans_t, sites_mpo; cutoff=cutoff)
+        return truncate(M; cutoff=cutoff)
     end
 
     @testset "qft_mpo" for sign in [1, -1], nbit in [2, 3]
         N = 2^nbit
 
-        sites = siteinds("Qubit", nbit)
-        M = Quantics._qft(sites; sign=sign)
+        sites = [Index(2, "Qubit,n=$n") for n in 1:nbit]
+        M = T4AQuantics._qft(sites; sign=sign)
         M_ref = _qft_ref(sites; sign=sign)
 
         @test M ≈ M_ref
@@ -40,9 +41,9 @@ end
 
 @testitem "fouriertransform_tests.jl/fouriertransform" begin
     using Test
-    using Quantics
+    using T4AQuantics
     using ITensors
-    using ITensorMPS: randomMPS
+    import T4AITensorCompat: random_mps
 
     function _ft_1d_ref(X, sign, originx, origink)
         N = length(X)
@@ -66,11 +67,11 @@ end
         sitesk = [Index(2, "Qubit,k=$k") for k in 1:nbit]
 
         # X(x)
-        X = randomMPS(sitesx)
+        X = random_mps(sitesx)
         X_vec = Array(reduce(*, X), reverse(sitesx))
 
         # Y(k)
-        Y = Quantics.fouriertransform(X; sign=sign, tag="x", sitesdst=sitesk,
+        Y = T4AQuantics.fouriertransform(X; sign=sign, tag="x", sitesdst=sitesk,
             originsrc=originx, origindst=originy)
 
         Y_vec_ref = _ft_1d_ref(X_vec, sign, originx, originy)
@@ -104,13 +105,13 @@ end
 
         # F(x, y)
         # F(x_1, y_1, ..., x_R, y_R)
-        F = randomMPS(sitesin)
+        F = random_mps(sitesin)
         F_mat = reshape(Array(reduce(*, F), vcat(reverse(sitesx), reverse(sitesy))), N, N)
 
         # G(kx, ky)
         # G(kx_R, ky_R, ..., kx_1, ky_1)
-        G_ = Quantics.fouriertransform(F; sign=sign, tag="x", sitesdst=siteskx)
-        G = Quantics.fouriertransform(G_; sign=sign, tag="y", sitesdst=sitesky)
+        G_ = T4AQuantics.fouriertransform(F; sign=sign, tag="x", sitesdst=siteskx)
+        G = T4AQuantics.fouriertransform(G_; sign=sign, tag="y", sitesdst=sitesky)
 
         G_mat_ref = _ft_2d_ref(F_mat, sign)
         G_mat = reshape(Array(reduce(*, G), vcat(reverse(siteskx), reverse(sitesky))), N, N)

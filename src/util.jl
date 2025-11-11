@@ -1,4 +1,4 @@
-function _extractsite(x::Union{MPS,MPO}, n::Int)
+function _extractsite(x::TensorTrain, n::Int)
     if n == 1
         return noprime(copy(uniqueind(x[n], x[n + 1])))
     elseif n == length(x)
@@ -8,9 +8,9 @@ function _extractsite(x::Union{MPS,MPO}, n::Int)
     end
 end
 
-_extractsites(x::Union{MPS,MPO}) = [_extractsite(x, n) for n in eachindex(x)]
+_extractsites(x::TensorTrain) = [_extractsite(x, n) for n in eachindex(x)]
 
-function _replace_mpo_siteinds!(M::MPO, sites_src, sites_dst)
+function _replace_mpo_siteinds!(M::TensorTrain, sites_src, sites_dst)
     sites_src = noprime(sites_src)
     sites_dst = noprime(sites_dst)
     for j in eachindex(M)
@@ -24,10 +24,10 @@ end
 Reverse the order of the MPS/MPO tensors
 The order of the siteinds are reversed in the returned object.
 """
-function _reverse(M::MPO)
+function _reverse(M::TensorTrain)
     sites = _extractsites(M)
     N = length(M)
-    M_ = MPO([M[n] for n in reverse(1:length(M))])
+    M_ = TensorTrain([M[n] for n in reverse(1:length(M))])
     for n in 1:N
         replaceind!(M_[n], sites[N - n + 1], sites[n])
         replaceind!(M_[n], sites[N - n + 1]', sites[n]')
@@ -41,7 +41,7 @@ Create a MPO with ITensor objects of ElType ComplexF64 filled with zero
 function _zero_mpo(sites; linkdims=ones(Int, length(sites) - 1))
     length(linkdims) == length(sites) - 1 ||
         error("Length mismatch $(length(linkdims)) != $(length(sites)) - 1")
-    M = MPO(sites)
+    M = TensorTrain(sites)
     N = length(M)
     links = [Index(1, "n=0,Link")]
     for n in 1:(N - 1)
@@ -92,8 +92,8 @@ new_sites: Vector of vectors of new siteinds
 
 When splitting MPS tensors, the column major is assumed.
 """
-function unfuse_siteinds(M::MPS, targetsites::Vector{Index{T}},
-        newsites::AbstractVector{Vector{Index{T}}})::MPS where {T}
+function unfuse_siteinds(M::TensorTrain, targetsites::Vector{Index{T}},
+        newsites::AbstractVector{Vector{Index{T}}})::TensorTrain where {T}
     length(targetsites) == length(newsites) || error("Length mismatch")
     links = linkinds(M)
     L = length(M)
@@ -129,26 +129,29 @@ function unfuse_siteinds(M::MPS, targetsites::Vector{Index{T}},
         end
     end
 
-    M_ = MPS(tensors_)
+    M_ = TensorTrain(tensors_)
     cleanup_linkinds!(M_)
     return M_
 end
 
-function _removeedges!(x::MPS, sites)
-    length(inds(x[1])) == 3 || error("Dim of the first tensor must be 3")
-    length(inds(x[end])) == 3 || error("Dim of the last tensor must be 3")
-    elt = eltype(x[1])
-    x[1] *= onehot(elt, uniqueind(x[1], x[2], sites) => 1)
-    x[end] *= onehot(elt, uniqueind(x[end], x[end - 1], sites) => 1)
-    return nothing
-end
-
-function _removeedges!(x::MPO, sites)
-    length(inds(x[1])) == 4 || error("Dim of the first tensor must be 4")
-    length(inds(x[end])) == 4 || error("Dim of the last tensor must be 4")
-    elt = eltype(x[1])
-    x[1] *= onehot(elt, uniqueind(x[1], x[2], sites, prime.(sites)) => 1)
-    x[end] *= onehot(elt, uniqueind(x[end], x[end - 1], sites, prime.(sites)) => 1)
+function _removeedges!(x::TensorTrain, sites)
+    # Check if it's MPS-like (3 indices) or MPO-like (4 indices)
+    n_inds_first = length(inds(x[1]))
+    n_inds_last = length(inds(x[end]))
+    
+    if n_inds_first == 3 && n_inds_last == 3
+        # MPS-like: 3 indices (link, site, link)
+        elt = eltype(x[1])
+        x[1] *= onehot(elt, uniqueind(x[1], x[2], sites) => 1)
+        x[end] *= onehot(elt, uniqueind(x[end], x[end - 1], sites) => 1)
+    elseif n_inds_first == 4 && n_inds_last == 4
+        # MPO-like: 4 indices (link, site, site', link)
+        elt = eltype(x[1])
+        x[1] *= onehot(elt, uniqueind(x[1], x[2], sites, prime.(sites)) => 1)
+        x[end] *= onehot(elt, uniqueind(x[end], x[end - 1], sites, prime.(sites)) => 1)
+    else
+        error("Unsupported tensor structure: first tensor has $n_inds_first indices, last tensor has $n_inds_last indices")
+    end
     return nothing
 end
 
@@ -159,23 +162,26 @@ function _removeedges!(tensors::Vector{ITensor}, sites)
         uniqueind(tensors[end], tensors[end - 1], sites, prime.(sites)) => 1)
 end
 
-function _addedges!(x::MPS)
-    length(inds(x[1])) == 2 || error("Dim of the first tensor must be 2")
-    length(inds(x[end])) == 2 || error("Dim of the last tensor must be 2")
-    linkl = Index(1, "Link,l=0")
-    linkr = Index(1, "Link,l=$(length(x))")
-    x[1] = ITensor(ITensors.data(x[1]), [linkl, inds(x[1])...])
-    x[end] = ITensor(ITensors.data(x[end]), [inds(x[end])..., linkr])
-    return nothing
-end
-
-function _addedges!(x::MPO)
-    length(inds(x[1])) == 3 || error("Dim of the first tensor must be 3")
-    length(inds(x[end])) == 3 || error("Dim of the last tensor must be 3")
-    linkl = Index(1, "Link,l=0")
-    linkr = Index(1, "Link,l=$(length(x))")
-    x[1] = ITensor(ITensors.data(x[1]), [linkl, inds(x[1])...])
-    x[end] = ITensor(ITensors.data(x[end]), [inds(x[end])..., linkr])
+function _addedges!(x::TensorTrain)
+    # Check if it's MPS-like (2 indices) or MPO-like (3 indices)
+    n_inds_first = length(inds(x[1]))
+    n_inds_last = length(inds(x[end]))
+    
+    if n_inds_first == 2 && n_inds_last == 2
+        # MPS-like: 2 indices (site, site)
+        linkl = Index(1, "Link,l=0")
+        linkr = Index(1, "Link,l=$(length(x))")
+        x[1] = ITensor(ITensors.data(x[1]), [linkl, inds(x[1])...])
+        x[end] = ITensor(ITensors.data(x[end]), [inds(x[end])..., linkr])
+    elseif n_inds_first == 3 && n_inds_last == 3
+        # MPO-like: 3 indices (site, site', site)
+        linkl = Index(1, "Link,l=0")
+        linkr = Index(1, "Link,l=$(length(x))")
+        x[1] = ITensor(ITensors.data(x[1]), [linkl, inds(x[1])...])
+        x[end] = ITensor(ITensors.data(x[end]), [inds(x[end])..., linkr])
+    else
+        error("Unsupported tensor structure: first tensor has $n_inds_first indices, last tensor has $n_inds_last indices")
+    end
     return nothing
 end
 
@@ -245,7 +251,7 @@ isascendingordescending(x) = isascendingorder(x) || isdecendingorder(x)
 function kronecker_deltas(sitesin; sitesout=prime.(noprime.(sitesin)))
     N = length(sitesout)
     links = [Index(1, "Link,l=$l") for l in 0:N]
-    M = MPO([delta(links[n], links[n + 1], sitesout[n], sitesin[n]) for n in 1:N])
+    M = TensorTrain([delta(links[n], links[n + 1], sitesout[n], sitesin[n]) for n in 1:N])
     M[1] *= onehot(links[1] => 1)
     M[end] *= onehot(links[end] => 1)
     return M
@@ -260,16 +266,20 @@ The resultant MPS do not depends on the missing site indices.
 MPO:
 For missing site indices, identity operators are inserted.
 """
-function matchsiteinds(M::Union{MPS,MPO}, sites)
+function matchsiteinds(M::TensorTrain, sites)
     N = length(sites)
     sites = noprime.(sites)
     positions = Int[findfirst(sites, s) for s in siteinds(M)]
     if length(M) > 1 && issorted(positions; lt=Base.isgreater)
-        return matchsiteinds(MPO([M[n] for n in reverse(1:length(M))]), sites)
+        return matchsiteinds(TensorTrain([M[n] for n in reverse(1:length(M))]), sites)
     end
 
-    Quantics.isascendingorder(positions) ||
+    T4AQuantics.isascendingorder(positions) ||
         error("siteinds are not in ascending order!")
+
+    # Detect if M is MPO-like (2 indices per site) or MPS-like (1 index per site)
+    sites_per_tensor = siteinds(M)
+    is_mpo = length(M) > 0 && all(length(s) == 2 for s in sites_per_tensor)
 
     # Add edges
     M_ = deepcopy(M)
@@ -300,10 +310,10 @@ function matchsiteinds(M::Union{MPS,MPO}, sites)
     end
 
     links = [Index(linkdims_new[l], "Link,l=$(l-1)") for l in eachindex(linkdims_new)]
-    if M isa MPO
+    if is_mpo
         tensors = [delta(links[n], links[n + 1]) * delta(sites[n], sites[n]')
                    for n in eachindex(sites)]
-    elseif M isa MPS
+    else
         tensors = [delta(links[n], links[n + 1]) * ITensor(1, sites[n])
                    for n in eachindex(sites)]
     end
@@ -314,9 +324,9 @@ function matchsiteinds(M::Union{MPS,MPO}, sites)
         tensor = copy(M_[n])
         replaceind!(tensor, links_old[n], links[p])
         replaceind!(tensor, links_old[n + 1], links[p + 1])
-        if M isa MPO
+        if is_mpo
             tensors[p] = permute(tensor, [links[p], links[p + 1], sites[p], sites[p]'])
-        elseif M isa MPS
+        else
             tensors[p] = permute(tensor, [links[p], links[p + 1], sites[p]])
         end
     end
@@ -324,44 +334,25 @@ function matchsiteinds(M::Union{MPS,MPO}, sites)
     tensors[1] *= onehot(links[1] => 1)
     tensors[end] *= onehot(links[end] => 1)
 
-    return typeof(M)(tensors)
-end
-
-asMPO(M::MPO) = M
-
-function asMPO(tensors::Vector{ITensor})
-    N = length(tensors)
-    M = MPO(N)
-    for n in 1:N
-        M[n] = tensors[n]
-    end
-    return M
-end
-
-function asMPO(M::MPS)
-    return asMPO(ITensors.data(M))
-end
-
-function asMPS(M::MPO)
-    return MPS([t for t in M])
+    return TensorTrain(tensors)
 end
 
 """
 Contract two adjacent tensors in MPO
 """
-function combinesites(M::MPO, site1::Index, site2::Index)
+function combinesites(M::TensorTrain, site1::Index, site2::Index)
     p1 = findsite(M, site1)
     p2 = findsite(M, site2)
     p1 === nothing && error("Not found $site1")
     p2 === nothing && error("Not found $site2")
     abs(p1 - p2) == 1 ||
         error("$site1 and $site2 are found at indices $p1 and $p2. They must be on two adjacent sites.")
-    tensors = ITensors.data(M)
+    tensors = collect(M)
     idx = min(p1, p2)
     tensor = tensors[idx] * tensors[idx + 1]
     deleteat!(tensors, idx:(idx + 1))
     insert!(tensors, idx, tensor)
-    return MPO(tensors)
+    return TensorTrain(Vector{ITensor}(tensors))
 end
 
 function combinesites(
@@ -406,11 +397,13 @@ function directprod(::Type{T}, sites, indices) where {T}
     end
     tensors[1] *= onehot(links[1] => 1)
     tensors[end] *= onehot(links[end] => 1)
-    return MPS(tensors)
+    return TensorTrain(tensors)
 end
 
-function _find_target_sites(M::MPS; sitessrc=nothing, tag="")
-    _find_target_sites(siteinds(M); sitessrc, tag)
+function _find_target_sites(M::TensorTrain; sitessrc=nothing, tag="")
+    sites_flat = collect(Iterators.flatten(siteinds(M)))
+    sites_vec = Vector{Index{Int}}(sites_flat)
+    _find_target_sites(sites_vec; sitessrc, tag)
 end
 
 function _find_target_sites(
@@ -433,7 +426,7 @@ function _find_target_sites(
     return sitepos, target_sites
 end
 
-function replace_siteinds_part!(M::MPS, sitesold, sitesnew)
+function replace_siteinds_part!(M::TensorTrain, sitesold, sitesnew)
     length(sitesold) == length(sitesnew) ||
         error("Length mismatch between sitesold and sitesnew")
 
@@ -452,7 +445,7 @@ end
 Connect two MPS's
 ITensor objects are deepcopied.
 """
-function _directprod(M1::MPS, Mx::MPS...)::MPS
+function _directprod(M1::TensorTrain, Mx::TensorTrain...)::TensorTrain
     M2 = Mx[1]
     l = Index(1, "Link")
     tensors1 = [deepcopy(x) for x in M1]
@@ -460,7 +453,7 @@ function _directprod(M1::MPS, Mx::MPS...)::MPS
     tensors1[end] = ITensor(ITensors.data(last(tensors1)), [inds(last(tensors1))..., l])
     tensors2[1] = ITensor(ITensors.data(first(tensors2)), [l, inds(first(tensors2))...])
 
-    M12 = MPS([tensors1..., tensors2...])
+    M12 = TensorTrain([tensors1..., tensors2...])
     if length(Mx) == 1
         return M12
     else
@@ -468,8 +461,8 @@ function _directprod(M1::MPS, Mx::MPS...)::MPS
     end
 end
 
-function rearrange_siteinds(M::AbstractMPS, sites::Vector{Vector{Index{T}}})::MPS where {T}
-    sitesold = siteinds(MPO(collect(M)))
+function rearrange_siteinds(M::TensorTrain, sites::Vector{Vector{Index{T}}})::TensorTrain where {T}
+    sitesold = siteinds(M)
 
     Set(Iterators.flatten(sites)) == Set(Iterators.flatten(sitesold)) ||
         error("siteinds do not match $(sites) != $(sitesold)")
@@ -500,34 +493,36 @@ function rearrange_siteinds(M::AbstractMPS, sites::Vector{Vector{Index{T}}})::MP
         tensors[i], t, _ = qr(t, linds)
     end
     tensors[end] *= t
-    cleanup_linkinds!(MPS(tensors))
+    return cleanup_linkinds!(TensorTrain(tensors))
 end
 
 """
 Makes an MPS/MPO diagonal for a specified a site index `s`.
 On return, the data will be deep copied and the target core tensor will be diagonalized with an additional site index `s'`.
 """
-function makesitediagonal(M::AbstractMPS, site::Index{T})::MPS where {T}
-    M_ = deepcopy(MPO(collect(M)))
+function makesitediagonal(M::TensorTrain, site::Index{T})::TensorTrain where {T}
+    M_ = deepcopy(M)
 
     target_site::Int = only(findsites(M_, site))
     M_[target_site] = _asdiagonal(M_[target_site], site)
 
-    return MPS(collect(M_))
+    return M_
 end
 
-function makesitediagonal(M::AbstractMPS, tag::String)::MPS
-    M_ = deepcopy(MPO(collect(M)))
+function makesitediagonal(M::TensorTrain, tag::String)::TensorTrain
+    M_ = deepcopy(M)
     sites = siteinds(M_)
 
-    target_positions = findallsites_by_tag(siteinds(M_); tag=tag)
+    # Convert to Vector{Vector{Index{Int}}} for type compatibility
+    sites_converted = Vector{Vector{Index{Int}}}([Vector{Index{Int}}(collect(s)) for s in sites])
+    target_positions = findallsites_by_tag(sites_converted; tag=tag)
 
     for t in eachindex(target_positions)
         i, j = target_positions[t]
         M_[i] = _asdiagonal(M_[i], sites[i][j])
     end
 
-    return MPS(collect(M_))
+    return M_
 end
 
 # FIXME: may be type unstable
@@ -541,18 +536,20 @@ end
 """
 Extract diagonal components
 """
-function extractdiagonal(M::AbstractMPS, tag::String)::MPS
-    M_ = deepcopy(MPO(collect(M)))
+function extractdiagonal(M::TensorTrain, tag::String)::TensorTrain
+    M_ = deepcopy(M)
     sites = siteinds(M_)
 
-    target_positions = findallsites_by_tag(siteinds(M_); tag=tag)
+    # Convert to Vector{Vector{Index{Int}}} for type compatibility
+    sites_converted = Vector{Vector{Index{Int}}}([Vector{Index{Int}}(collect(s)) for s in sites])
+    target_positions = findallsites_by_tag(sites_converted; tag=tag)
 
     for t in eachindex(target_positions)
         i, j = target_positions[t]
         M_[i] = _extract_diagonal(M_[i], sites[i][j], sites[i][j]')
     end
 
-    return MPS(collect(M_))
+    return M_
 end
 
 function _extract_diagonal(t, site::Index{T}, site2::Index{T}) where {T<:Number}
@@ -566,25 +563,15 @@ function _extract_diagonal(t, site::Index{T}, site2::Index{T}) where {T<:Number}
     return ITensor(newdata, restinds..., site)
 end
 
-function _apply(A::MPO, Ψ::MPO; alg::String="fit", cutoff::Real=1e-25, kwargs...)::MPO
+function _apply(A::TensorTrain, Ψ::TensorTrain; alg::String="fit", cutoff::Real=1e-25, kwargs...)::TensorTrain
     if :algorithm ∈ keys(kwargs)
         error("keyword argument :algorithm is not allowed")
     end
     if alg == "densitymatrix" && cutoff <= 1e-10
         @warn "cutoff is too small for densitymatrix algorithm. Use fit algorithm instead."
     end
-    AΨ = replaceprime(
-        FastMPOContractions.contract_mpo_mpo(A', asMPO(Ψ); alg, cutoff, kwargs...), 2 => 1)
-    MPO(collect(AΨ))
-end
-
-function _apply(A::MPO, Ψ::MPS; alg::String="fit", cutoff::Real=1e-25, kwargs...)::MPS
-    if :algorithm ∈ keys(kwargs)
-        error("keyword argument :algorithm is not allowed")
-    end
-    if alg == "densitymatrix" && cutoff <= 1e-10
-        @warn "cutoff is too small for densitymatrix algorithm. Use fit algorithm instead."
-    end
-    AΨ = noprime.(FastMPOContractions.contract_mpo_mpo(A, asMPO(Ψ); alg, cutoff, kwargs...))
-    MPS(collect(AΨ))
+    # Convert alg to Algorithm type
+    alg_ = alg isa Algorithm ? alg : Algorithm(alg)
+    # Use T4AITensorCompat.product for MPO * MPO
+    return product(A, Ψ; alg=alg_, cutoff=cutoff, kwargs...)
 end

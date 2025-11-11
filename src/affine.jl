@@ -49,7 +49,7 @@ function affine_transform_mpo(
         A::AbstractMatrix{<:Union{Integer,Rational}},
         b::AbstractVector{<:Union{Integer,Rational}},
         boundary::AbstractBoundaryConditions=PeriodicBoundaryConditions()
-)::MPO
+)::TensorTrain
     R = size(y, 1)
     M, N = size(A)
     size(x) == (R, N) ||
@@ -66,7 +66,7 @@ function affine_transform_mpo(
     link = [Index(size(tensors[r], 2); tags="link $r") for r in 1:(R - 1)]
 
     # Fill the MPO, taking care to not include auxiliary links at the edges
-    mpo = MPO(R)
+    mpo = TensorTrain(R)
     spin_dims = ntuple(_ -> 2, M + N)
     if R == 1
         mpo[1] = ITensor(reshape(tensors[1], spin_dims...),
@@ -321,7 +321,7 @@ end
 
 function affine_mpo_to_matrix(
         outsite::AbstractMatrix{<:Index}, insite::AbstractMatrix{<:Index},
-        mpo::MPO)
+        mpo::TensorTrain)
     prev_warn_order = ITensors.disable_warn_order()
     try
         mpo_contr = reduce(*, mpo)

@@ -1,14 +1,14 @@
-using Quantics
+using T4AQuantics
 using Documenter
 
-DocMeta.setdocmeta!(Quantics, :DocTestSetup, :(using Quantics); recursive=true)
+DocMeta.setdocmeta!(T4AQuantics, :DocTestSetup, :(using T4AQuantics); recursive=true)
 
 makedocs(;
-    modules=[Quantics],
+    modules=[T4AQuantics],
     authors="Hiroshi Shinaoka <h.shinaoka@gmail.com> and contributors",
-    sitename="Quantics.jl",
+    sitename="T4AQuantics.jl",
     format=Documenter.HTML(;
-        canonical="https://github.com/tensor4all/Quantics.jl",
+        canonical="https://github.com/tensor4all/T4AQuantics.jl",
         edit_link="main",
         assets=String[]),
     pages=[
@@ -16,6 +16,6 @@ makedocs(;
     ])
 
 deploydocs(;
-    repo="github.com/tensor4all/Quantics.jl.git",
+    repo="github.com/tensor4all/T4AQuantics.jl.git",
     devbranch="main"
 )

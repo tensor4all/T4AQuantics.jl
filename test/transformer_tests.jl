@@ -1,16 +1,15 @@
 
 @testitem "transformer_tests.jl/functions" begin
     using Test
-    import Quantics
+    import T4AQuantics
     using ITensors
-    using ITensors.SiteTypes: siteinds
-    using ITensorMPS: randomMPS
+    import T4AITensorCompat: random_mps, TensorTrain, siteinds, apply, product
     using LinearAlgebra
 
     @testset "upper_lower_triangle" for upper_or_lower in [:upper, :lower]
         R = 3
-        sites = siteinds("Qubit", R)
-        trimat = Quantics.upper_lower_triangle_matrix(sites, 1.0;
+        sites = [Index(2, "Qubit, n=$n") for n in 1:R]
+        trimat = T4AQuantics.upper_lower_triangle_matrix(sites, 1.0;
             upper_or_lower=upper_or_lower)
         trimatdata = Array(reduce(*, trimat), [reverse(sites')..., reverse(sites)...])
         trimatdata = reshape(trimatdata, 2^R, 2^R)
@@ -23,13 +22,13 @@
 
     @testset "cusum" begin
         R = 3
-        sites = siteinds("Qubit", R)
-        UT = Quantics.upper_lower_triangle_matrix(sites, 1.0; upper_or_lower=:lower)
-        f = Quantics.expqtt(sites, -1.0)
+        sites = [Index(2, "Qubit, n=$n") for n in 1:R]
+        UT = T4AQuantics.upper_lower_triangle_matrix(sites, 1.0; upper_or_lower=:lower)
+        f = T4AQuantics.expqtt(sites, -1.0)
         f_values = vec(Array(reduce(*, f), reverse(sites)))
         xs = collect(LinRange(0, 1, 2^R + 1)[1:(end - 1)])
 
-        g = apply(UT, f)
+        g = apply(UT, f; nsweeps=4)
         g_values = vec(Array(reduce(*, g), reverse(sites)))
 
         g_values_ref = cumsum(f_values) .- f_values # Second term remove the own values
@@ -38,11 +37,11 @@
     end
 
     @testset "flipop" for nbit in 2:3, rev_carrydirec in [true, false], bc in [1, -1]
-        sites = siteinds("Qubit", nbit)
+        sites = [Index(2, "Qubit, n=$n") for n in 1:nbit]
 
-        g = randomMPS(rev_carrydirec ? sites : reverse(sites))
+        g = random_mps(rev_carrydirec ? sites : reverse(sites))
 
-        op = Quantics.flipop(siteinds(g); rev_carrydirec=rev_carrydirec, bc=bc)
+        op = T4AQuantics.flipop(Vector{Index{Int}}(collect(Iterators.flatten(siteinds(g)))); rev_carrydirec=rev_carrydirec, bc=bc)
         f = apply(op, g; alg="naive")
         g_reconst = vec(Array(reduce(*, g), reverse(sites)))
         f_reconst = vec(Array(reduce(*, f), reverse(sites)))
@@ -59,18 +58,18 @@ end
 
 @testitem "transformer_tests.jl/reverseaxis" begin
     using Test
-    import Quantics
+    import T4AQuantics
     using ITensors
-    using ITensorMPS: randomMPS
+    import T4AITensorCompat: random_mps, apply
     using LinearAlgebra
 
     @testset "reverseaxis" for bc in [1], nbit in 2:2, rev_carrydirec in [true, false]
         sitesx = [Index(2, "x=$x") for x in 1:nbit]
         sites = rev_carrydirec ? sitesx : reverse(sitesx)
 
-        g = randomMPS(sites)
+        g = random_mps(sites)
 
-        f = Quantics.reverseaxis(g; tag="x", alg="naive", bc=bc)
+        f = T4AQuantics.reverseaxis(g; tag="x", alg="naive", bc=bc)
         g_reconst = vec(Array(reduce(*, g), reverse(sitesx)))
         f_reconst = vec(Array(reduce(*, f), reverse(sitesx)))
 
@@ -95,7 +94,7 @@ end
             sites = collect(Iterators.flatten(zip(reverse(sitesx), reverse(sitesy))))
         end
 
-        g = randomMPS(sites)
+        g = random_mps(sites)
 
         function _reconst(M)
             arr = Array(reduce(*, M), [reverse(sitesx)..., reverse(sitesy)...])
@@ -104,10 +103,10 @@ end
 
         g_reconst = _reconst(g)
 
-        fx = Quantics.reverseaxis(g; tag="x", alg="naive")
+        fx = T4AQuantics.reverseaxis(g; tag="x", alg="naive")
         fx_reconst = _reconst(fx)
 
-        fy = Quantics.reverseaxis(g; tag="y", alg="naive")
+        fy = T4AQuantics.reverseaxis(g; tag="y", alg="naive")
         fy_reconst = _reconst(fy)
 
         fx_ref = similar(fx_reconst)
@@ -136,7 +135,7 @@ end
                 reverse(sitesz))))
         end
 
-        g = randomMPS(sites)
+        g = random_mps(sites)
 
         function _reconst(M)
             arr = Array(reduce(*, M),
@@ -146,13 +145,13 @@ end
 
         g_reconst = _reconst(g)
 
-        fx = Quantics.reverseaxis(g; tag="x", alg="naive")
+        fx = T4AQuantics.reverseaxis(g; tag="x", alg="naive")
         fx_reconst = _reconst(fx)
 
-        fy = Quantics.reverseaxis(g; tag="y", alg="naive")
+        fy = T4AQuantics.reverseaxis(g; tag="y", alg="naive")
         fy_reconst = _reconst(fy)
 
-        fz = Quantics.reverseaxis(g; tag="z", alg="naive")
+        fz = T4AQuantics.reverseaxis(g; tag="z", alg="naive")
         fz_reconst = _reconst(fz)
 
         fx_ref = similar(fx_reconst)
@@ -178,7 +177,7 @@ end
         M = randomMPS(sites)
 
         for which_new in ["left", "right"]
-            Mnew = Quantics.asdiagonal(M, sites′; tag="n", which_new=which_new)
+            Mnew = T4AQuantics.asdiagonal(M, sites′; tag="n", which_new=which_new)
 
             M_reconst = reshape(Array(reduce(*, M), reverse(sites)), 2^R)
             Mnew_reconst = reshape(Array(reduce(*, Mnew),
@@ -193,9 +192,9 @@ end
 
 @testitem "transformer_tests.jl/phase_rotation" begin
     using Test
-    import Quantics
+    import T4AQuantics
     using ITensors
-    using ITensorMPS: randomMPS
+    import T4AITensorCompat: random_mps, apply
     using LinearAlgebra
 
     @testset "phase_rotation" begin
@@ -205,30 +204,30 @@ end
         sites = [Index(2, "Qubit,x=$x") for x in 1:nqbit]
         _reconst(x) = vec(Array(reduce(*, x), reverse(sites)))
 
-        f = randomMPS(sites)
+        f = random_mps(sites)
         f_vec = _reconst(f)
 
         ref = exp.(im * θ * xvec) .* f_vec
 
-        @test ref ≈ _reconst(Quantics.phase_rotation(f, θ; tag="x"))
-        @test ref ≈ _reconst(Quantics.phase_rotation(f, θ; targetsites=sites))
+        @test ref ≈ _reconst(T4AQuantics.phase_rotation(f, θ; tag="x"))
+        @test ref ≈ _reconst(T4AQuantics.phase_rotation(f, θ; targetsites=sites))
     end
 end
 
 @testitem "transformer_tests.jl/shiftaxis" begin
     using Test
-    import Quantics
+    import T4AQuantics
     using ITensors
-    using ITensorMPS: randomMPS
+    import T4AITensorCompat: random_mps, apply
     using LinearAlgebra
 
     @testset "shiftaxis" for R in [3], bc in [1, -1], rev_carrydirec in [true, false]
         sitesx = [Index(2, "Qubit, x=$n") for n in 1:R]
         sites = rev_carrydirec ? sitesx : reverse(sitesx)
-        g = randomMPS(sites)
+        g = random_mps(sites)
 
         for shift in [0, 1, 2, 2^R - 1]
-            f = Quantics.shiftaxis(g, shift; bc=bc, tag="x")
+            f = T4AQuantics.shiftaxis(g, shift; bc=bc, tag="x")
 
             f_vec = vec(Array(reduce(*, f), reverse(sitesx)))
             g_vec = vec(Array(reduce(*, g), reverse(sitesx)))
@@ -252,10 +251,10 @@ end
         else
             sites = collect(Iterators.flatten(zip(reverse(sitesx), reverse(sitesy))))
         end
-        g = randomMPS(sites)
+        g = random_mps(sites)
 
         for shift in [-4^R + 1, -1, 0, 1, 2^R - 1, 2^R, 2^R + 1, 4^R + 1]
-            f = Quantics.shiftaxis(g, shift; tag="x", bc=bc)
+            f = T4AQuantics.shiftaxis(g, shift; tag="x", bc=bc)
 
             f_mat = reshape(Array(reduce(*, f), vcat(reverse(sitesx), reverse(sitesy))),
                 2^R, 2^R)

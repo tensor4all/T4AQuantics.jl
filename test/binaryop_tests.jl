@@ -1,9 +1,9 @@
 @testitem "binaryop_tests.jl/_binaryop" begin
     using Test
     using ITensors
-    using ITensorMPS: randomMPS
+    import T4AITensorCompat: random_mps, apply
     ITensors.disable_warn_order()
-    using Quantics
+    using T4AQuantics
     import Random
 
     @testset "_binaryop" for rev_carrydirec in [true], nbit in 2:3
@@ -28,10 +28,10 @@
         rsites = reverse(sites)
 
         for a in -1:1, b in -1:1, c in -1:1, d in -1:1, bc_x in [1, -1], bc_y in [1, -1]
-            g = randomMPS(sites)
-            M = Quantics._binaryop_mpo(sites, [(a, b), (c, d)], [(1, 2), (1, 2)];
+            g = random_mps(sites)
+            M = T4AQuantics._binaryop_mpo(sites, [(a, b), (c, d)], [(1, 2), (1, 2)];
                 rev_carrydirec=rev_carrydirec, bc=[bc_x, bc_y])
-            f = apply(M, g)
+            f = apply(M, g; alg="naive")
 
             # f[x_R, ..., x_1, y_R, ..., y_1] and f[x, y]
             f_arr = Array(reduce(*, f), vcat(reverse(sitesx), reverse(sitesy)))
@@ -65,9 +65,9 @@ end
 @testitem "binaryop_tests.jl/affinetransform" begin
     using Test
     using ITensors
-    using ITensorMPS: randomMPS
+    import T4AITensorCompat: random_mps
     ITensors.disable_warn_order()
-    using Quantics
+    using T4AQuantics
     import Random
 
     @testset "affinetransform" for rev_carrydirec in [true, false], nbit in 2:3
@@ -91,10 +91,10 @@ end
         shift = rand((-2 * 2^nbit):(2 * 2^nbit), 2)
 
         for a in -1:1, b in -1:1, c in -1:1, d in -1:1, bc_x in [1, -1], bc_y in [1, -1]
-            g = randomMPS(sites)
-            f = Quantics.affinetransform(g, ["x", "y"],
+            g = random_mps(sites)
+            f = T4AQuantics.affinetransform(g, ["x", "y"],
                 [Dict("x" => a, "y" => b), Dict("x" => c, "y" => d)],
-                shift, [bc_x, bc_y]; cutoff=1e-25)
+                shift, [bc_x, bc_y]; cutoff=1e-25, alg="naive")
 
             # f[x_R, ..., x_1, y_R, ..., y_1] and f[x, y]
             f_arr = Array(reduce(*, f), vcat(reverse(sitesx), reverse(sitesy)))
@@ -128,9 +128,9 @@ end
 @testitem "binaryop_tests.jl/affinetransform_three_vars" begin
     using Test
     using ITensors
-    using ITensorMPS: randomMPS
+    import T4AITensorCompat: random_mps
     ITensors.disable_warn_order()
-    using Quantics
+    using T4AQuantics
     import Random
 
     affinetransform_testsets = []
@@ -212,10 +212,10 @@ end
 
         shift = rand((-2 * 2^nbit):(2 * 2^nbit), 3)
 
-        g = randomMPS(sites)
-        f = Quantics.affinetransform(g, ["x", "y", "z"],
+        g = random_mps(sites)
+        f = T4AQuantics.affinetransform(g, ["x", "y", "z"],
             coeffs_dic,
-            shift, [bc_x, bc_y, bc_z]; cutoff=1e-25)
+            shift, [bc_x, bc_y, bc_z]; cutoff=1e-25, alg="naive")
 
         # f[x_R, ..., x_1, y_R, ..., y_1, z_R, ..., z_1] and f[x, y, z]
         f_arr = Array(reduce(*, f),
@@ -251,18 +251,18 @@ end
 @testitem "binaryop_tests.jl/shiftop" begin
     using Test
     using ITensors
-    using ITensorMPS: randomMPS
+    import T4AITensorCompat: random_mps, apply, product
     ITensors.disable_warn_order()
-    using Quantics
+    using T4AQuantics
     import Random
 
     @testset "shiftop" for R in [3], bc in [1, -1]
         sites = [Index(2, "Qubit, x=$n") for n in 1:R]
-        g = randomMPS(sites)
+        g = random_mps(sites)
 
         for shift in [0, 1, 2, 2^R - 1]
-            M = Quantics._shift_mpo(sites, shift; bc=bc)
-            f = apply(M, g)
+            M = T4AQuantics._shift_mpo(sites, shift; bc=bc)
+            f = apply(M, g; alg="naive")
 
             f_vec = vec(Array(reduce(*, f), reverse(sites)))
             g_vec = vec(Array(reduce(*, g), reverse(sites)))

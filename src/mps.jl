@@ -2,7 +2,7 @@
 Create a MPS filled with one
 """
 function onemps(::Type{T}, sites) where {T<:Number}
-    M = MPS(T, sites; linkdims=1)
+    M = TensorTrain(T, sites; linkdims=1)
     l = linkinds(M)
     for n in eachindex(M)
         if n == 1
@@ -32,5 +32,5 @@ function expqtt(sites, a::Float64)
     end
     tensors[1] *= onehot(links[1] => 1)
     tensors[end] *= onehot(links[end] => 1)
-    return MPS(tensors)
+    return TensorTrain(tensors)
 end

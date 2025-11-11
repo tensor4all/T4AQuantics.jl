@@ -16,8 +16,8 @@ _stat_shift(::Bosonic) = 0
 _stat_sign(::Fermionic) = -1
 _stat_sign(::Bosonic) = 1
 
-function to_wn(stat::Statistics, gtau::MPS, beta::Float64; sitessrc=nothing, tag="",
-        sitesdst=nothing, kwargs...)::MPS
+function to_wn(stat::Statistics, gtau::TensorTrain, beta::Float64; sitessrc=nothing, tag="",
+        sitesdst=nothing, kwargs...)::TensorTrain
     sitepos, _ = _find_target_sites(gtau; sitessrc=sitessrc, tag=tag)
     nqbit_t = length(sitepos)
     p_back = precision(BigFloat)
@@ -30,8 +30,8 @@ function to_wn(stat::Statistics, gtau::MPS, beta::Float64; sitessrc=nothing, tag
     return giv
 end
 
-function to_tau(stat::Statistics, giv::MPS, beta::Float64; sitessrc=nothing, tag="",
-        sitesdst=nothing, kwargs...)::MPS
+function to_tau(stat::Statistics, giv::TensorTrain, beta::Float64; sitessrc=nothing, tag="",
+        sitesdst=nothing, kwargs...)::TensorTrain
     sitepos, _ = _find_target_sites(giv; sitessrc=sitessrc, tag=tag)
     p_back = precision(BigFloat)
     setprecision(BigFloat, 256)
@@ -52,7 +52,7 @@ function decompose_gtau(gtau_smpl::Vector{ComplexF64}, sites; kwargs...)
     gtau_smpl = reshape(gtau_smpl, repeat([2], nbit)...)
     gtau_smpl = permutedims(gtau_smpl, reverse(collect(1:nbit)))
 
-    return MPS(gtau_smpl, sites; kwargs...)
+    return TensorTrain(gtau_smpl, sites; kwargs...)
 end
 
 """
@@ -66,7 +66,7 @@ function decompose_giv(giv_smpl::Vector{ComplexF64}, sites; kwargs...)
     nbit = length(sites)
     length(giv_smpl) == 2^nbit || error("Length mismatch")
     tensor = ITensor(giv_smpl, reverse(sites))
-    return MPS(tensor, reverse(sites); kwargs...)
+    return TensorTrain(tensor, reverse(sites); kwargs...)
 end
 
 """
@@ -83,7 +83,7 @@ function poletomps(stat::Statistics, sites, β, ω)
     tensors[1] *= -1 / (1 - _stat_sign(stat) * exp(-β * ω))
     tensors[1] *= onehot(links[1] => 1)
     tensors[end] *= onehot(links[end] => 1)
-    return MPS(tensors)
+    return TensorTrain(tensors)
 end
 
 """
@@ -93,14 +93,16 @@ function poletomps(::Fermionic, sites, β, ω)
     if β * ω < -100.0
         R = length(sites)
         sites_ = [Index(2, "Qubit,τ=$n") for n in 1:R]
-        tmp = reverseaxis(Quantics.expqtt(sites_, β * ω); tag="τ", bc=1)
+        tmp = reverseaxis(T4AQuantics.expqtt(sites_, β * ω); tag="τ", bc=1)
         res = shiftaxis(tmp, +1; tag="τ", bc=1) * (-exp(β * ω / 2^R))
         for n in 1:R
             replaceind!(res[n], sites_[n] => sites[n])
         end
         return res
     end
-    return expqtt(sites, -β * ω) / (-1 - exp(-β * ω))
+    result = expqtt(sites, -β * ω)
+    divisor = -1 - exp(-β * ω)
+    return result * (1.0 / divisor)
 end
 
 poletomps(sites, β, ω) = poletomps(Fermionic(), sites, β, ω)

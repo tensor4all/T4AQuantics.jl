@@ -7,15 +7,6 @@
 [submodule "QuanticsTCI.jl"]
 	path = QuanticsTCI.jl
 	url = git@github.com:tensor4all/QuanticsTCI.jl.git
-[submodule "TCIAlgorithms.jl"]
-	path = TCIAlgorithms.jl
-	url = git@github.com:tensor4all/TCIAlgorithms.jl.git
-[submodule "TreeTCI.jl"]
-	path = TreeTCI.jl
-	url = git@github.com:tensor4all/TreeTCI.jl.git
-[submodule "SimpleTensorTrains.jl"]
-	path = SimpleTensorTrains.jl
-	url = git@github.com:tensor4all/SimpleTensorTrains.jl.git
 [submodule "FastMPOContractions.jl"]
 	path = FastMPOContractions.jl
 	url = git@github.com:tensor4all/FastMPOContractions.jl.git
@@ -25,6 +16,3 @@
 [submodule "PartitionedMPSs.jl"]
 	path = PartitionedMPSs.jl
 	url = git@github.com:tensor4all/PartitionedMPSs.jl.git
-[submodule "T4APartitionedMPSs.jl"]
-	path = T4APartitionedMPSs.jl
-	url = https://github.com/tensor4all/T4APartitionedMPSs.jl

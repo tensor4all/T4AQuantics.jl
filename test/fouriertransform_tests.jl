@@ -3,8 +3,7 @@
     using Test
     using T4AQuantics
     using ITensors
-    import T4AITensorCompat: TensorTrain
-    import ITensorMPS
+    import T4AITensorCompat: TensorTrain, truncate
     # A brute-force implementation of _qft (only for tests)
     function _qft_ref(sites; cutoff::Float64=1e-14, sign::Int=1)
         abs(sign) == 1 || error("sign must either 1 or -1")
@@ -23,8 +22,10 @@
         tmat = reshape(tmat, ntuple(x -> 2, 2 * nbit))
 
         trans_t = ITensor(tmat, reverse(sites)..., prime(sites)...)
-        M = TensorTrain(ITensorMPS.MPO(trans_t, sites; cutoff=cutoff))
-        return M
+        # Create MPO sites: each site has [lower_index, upper_index]
+        sites_mpo = [[sites[n], prime(sites[n])] for n in 1:nbit]
+        M = TensorTrain(trans_t, sites_mpo; cutoff=cutoff)
+        return truncate(M; cutoff=cutoff)
     end
 
     @testset "qft_mpo" for sign in [1, -1], nbit in [2, 3]

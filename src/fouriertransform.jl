@@ -29,7 +29,9 @@ function _qft(sites; cutoff::Float64=1e-25, sign::Int=1)
 
     sites_MPO = collect.(zip(prime.(sites), sites))
     fouriertt = QuanticsTCI.quanticsfouriermpo(R; sign=Float64(sign), normalize=true)
-    M = TensorTrain(fouriertt; sites=sites_MPO)
+    # Convert TCI.TensorTrain to T4AITensorCompat.TensorTrain using new constructor
+    tt_cores = TCI.sitetensors(fouriertt)
+    M = TensorTrain(tt_cores; sites=sites_MPO)
 
     return truncate(M; cutoff)
 end

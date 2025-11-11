@@ -1,7 +1,7 @@
 name = "T4AQuantics"
 uuid = "99202d80-6772-4c79-995b-f2660cf2bd6d"
 authors = ["Hiroshi Shinaoka <h.shinaoka@gmail.com> and contributors"]
-version = "0.4.6"
+version = "0.5.0"
 
 [deps]
 EllipsisNotation = "da5c29d0-fa7d-589e-88eb-ea29b0a81949"
@@ -13,17 +13,14 @@ SparseIR = "4fe2279e-80f0-4adb-8463-ee114ff56b7d"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 T4AITensorCompat = "864b39ca-388c-4f43-a593-a1076cf4b253"
 T4APartitionedMPSs = "f7a3e09c-877e-4116-af24-45397c1413c2"
-
-[extensions]
-QuantiscPartitionedMPSsExt = "T4APartitionedMPSs"
+TensorCrossInterpolation = "b261b2ec-6378-4871-b32e-9173bb050604"
 
 [compat]
 EllipsisNotation = "1"
-ITensors = "0.7, 0.8, 0.9"
 QuanticsTCI = "0.7"
 SparseIR = "^0.96, 0.97, 1"
 StaticArrays = "1"
-T4APartitionedMPSs = "0.7"
+T4APartitionedMPSs = "0.7.0"
 julia = "1"
 
 [extras]

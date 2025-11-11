@@ -136,10 +136,10 @@
             ComplexF64, inv_iwn_tci, ngrid; tolerance=tol, maxbonddim=maxdim_TCI)
 
         inv_iwn_tt = TCI.TensorTrain(qtci2.tci)
-        # Convert TensorCrossInterpolation.TensorTrain to ITensorMPS.MPS first
-        import ITensorMPS
-        iwmps_mps = ITensorMPS.MPS(inv_iwn_tt; sites=sitesiω)
-        iwmps = TensorTrain(iwmps_mps)
+        # Convert TensorCrossInterpolation.TensorTrain to T4AITensorCompat.TensorTrain
+        # using new constructor with core arrays
+        tt_cores = TCI.sitetensors(inv_iwn_tt)
+        iwmps = TensorTrain(tt_cores; sites=sitesiω)
 
         fourier_inv_iw = T4AQuantics.to_tau(
             Fermionic(), iwmps, β; tag="iω", sitesdst=sitesτ, cutoff_MPO=cutoff_mpo,

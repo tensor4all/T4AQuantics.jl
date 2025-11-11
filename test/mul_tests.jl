@@ -122,8 +122,7 @@ end
 
 @testitem "mul_tests.jl/batchedmatmul" begin
     using Test
-    import PartitionedMPSs: PartitionedMPSs, isprojectedat
-    import T4APartitionedMPSs: project, Projector, SubDomainMPS, PartitionedMPS
+    import T4APartitionedMPSs: project, Projector, SubDomainMPS, PartitionedMPS, isprojectedat
     import T4AQuantics
     using ITensors
     import T4AITensorCompat: random_mps, TensorTrain, siteinds

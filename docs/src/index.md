@@ -1,14 +1,14 @@
 ```@meta
-CurrentModule = Quantics
+CurrentModule = T4AQuantics
 ```
 
-# Quantics
+# T4AQuantics
 
-Documentation for [Quantics](https://gitlab.com/tensors4fields/Quantics.jl).
+Documentation for [T4AQuantics.jl](https://github.com/tensor4all/T4AQuantics.jl).
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [Quantics]
+Modules = [T4AQuantics]
 ```

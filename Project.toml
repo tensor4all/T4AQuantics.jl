@@ -23,7 +23,7 @@ ITensors = "0.7, 0.8, 0.9"
 QuanticsTCI = "0.7"
 SparseIR = "^0.96, 0.97, 1"
 StaticArrays = "1"
-T4APartitionedMPSs = "0.6"
+T4APartitionedMPSs = "0.7"
 julia = "1"
 
 [extras]

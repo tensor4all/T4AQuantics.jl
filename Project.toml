@@ -20,7 +20,7 @@ EllipsisNotation = "1"
 QuanticsTCI = "0.7"
 SparseIR = "^0.96, 0.97, 1"
 StaticArrays = "1"
-T4APartitionedMPSs = "0.7.0"
+T4APartitionedMPSs = "0.7.3"
 julia = "1"
 
 [extras]

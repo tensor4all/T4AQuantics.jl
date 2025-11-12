@@ -1,7 +1,7 @@
 name = "T4AQuantics"
 uuid = "99202d80-6772-4c79-995b-f2660cf2bd6d"
-authors = ["Hiroshi Shinaoka <h.shinaoka@gmail.com> and contributors"]
 version = "0.5.0"
+authors = ["Hiroshi Shinaoka <h.shinaoka@gmail.com> and contributors"]
 
 [deps]
 EllipsisNotation = "da5c29d0-fa7d-589e-88eb-ea29b0a81949"
@@ -17,6 +17,7 @@ TensorCrossInterpolation = "b261b2ec-6378-4871-b32e-9173bb050604"
 
 [compat]
 EllipsisNotation = "1"
+ITensors = "0.9"
 QuanticsTCI = "0.7"
 SparseIR = "^0.96, 0.97, 1"
 StaticArrays = "1"

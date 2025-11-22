@@ -82,17 +82,17 @@ end
 
 function extractdiagonal(subdmps::SubDomainTT, tag::String)::SubDomainTT
     targetsites = findallsiteinds_by_tag(
-        unique(ITensors.noprime.(T4APartitionedTTs._allsites(subdmps))); tag=tag
+        unique(ITensors.noprime.(T4APartitionedTT._allsites(subdmps))); tag=tag
     )
     return extractdiagonal(subdmps, targetsites)
 end
 
 function rearrange_siteinds(subdmps::SubDomainTT, sites)
-    return T4APartitionedTTs.rearrange_siteinds(subdmps, sites)
+    return T4APartitionedTT.rearrange_siteinds(subdmps, sites)
 end
 
 function rearrange_siteinds(partmps::PartitionedTT, sites)
-    return T4APartitionedTTs.rearrange_siteinds(partmps, sites)
+    return T4APartitionedTT.rearrange_siteinds(partmps, sites)
 end
 
 """
@@ -155,7 +155,7 @@ function automul(
     M2 = rearrange_siteinds(
         M2, combinesites(sites_M2_diag, Vector{Index{Int}}(sites_shared), Vector{Index{Int}}(sites_col)))
 
-    M = T4APartitionedTTs.contract(M1, M2; alg=alg, kwargs...)
+    M = T4APartitionedTT.contract(M1, M2; alg=alg, kwargs...)
 
     M = extractdiagonal(M, sites1_ewmul)
 
@@ -174,7 +174,7 @@ function automul(
             end
         end
     end
-    return T4APartitionedTTs.truncate(
+    return T4APartitionedTT.truncate(
         rearrange_siteinds(M, ressites); cutoff=cutoff, maxdim=maxdim)
 end
 

@@ -15,7 +15,7 @@ import SparseArrays: sparse
 
 import QuanticsTCI
 import TensorCrossInterpolation as TCI
-import T4APartitionedMPSs
+import T4APartitionedTT
 using T4AITensorCompat: contract, Algorithm, apply, product
 
 using EllipsisNotation
@@ -32,6 +32,6 @@ include("fouriertransform.jl")
 include("imaginarytime.jl")
 include("transformer.jl")
 include("affine.jl")
-include("partitionedmps.jl")
+include("partitionedtt.jl")
 
 end

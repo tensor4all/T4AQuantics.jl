@@ -1,6 +1,6 @@
 @testitem "util.jl" begin
     using Test
-    import T4APartitionedMPSs: T4APartitionedMPSs, SubDomainMPS, PartitionedMPS, project,
+    import T4APartitionedTT: T4APartitionedTT, SubDomainTT, PartitionedTT, project,
                             isprojectedat
     import T4AQuantics
     using ITensors
@@ -267,7 +267,7 @@
         end
     end
 
-    @testset "SubDomainMPS" begin
+    @testset "SubDomainTT" begin
         @testset "rearrange_siteinds" begin
             N = 3
             sitesx = [Index(2, "x=$n") for n in 1:N]
@@ -277,7 +277,7 @@
 
             Ψ = _random_mpo(sites)
 
-            prjΨ = SubDomainMPS(Ψ)
+            prjΨ = SubDomainTT(Ψ)
             prjΨ1 = project(prjΨ, Dict(sitesx[1] => 1))
 
             sitesxy = collect(collect.(zip(sitesx, sitesy)))
@@ -289,7 +289,7 @@
             prjΨ1_rearranged = T4AQuantics.rearrange_siteinds(prjΨ1, sites_rearranged)
 
             @test reduce(*, TensorTrain(prjΨ1)) ≈ reduce(*, TensorTrain(prjΨ1_rearranged))
-            @test T4APartitionedMPSs.siteinds(prjΨ1_rearranged) == sites_rearranged
+            @test T4APartitionedTT.siteinds(prjΨ1_rearranged) == sites_rearranged
         end
 
         @testset "makesitediagonal and extractdiagonal" begin
@@ -304,11 +304,11 @@
 
             Ψ = _random_mpo(sites)
 
-            prjΨ = SubDomainMPS(Ψ)
+            prjΨ = SubDomainTT(Ψ)
             prjΨ1 = project(prjΨ, Dict(sitesx[1] => 1))
 
             prjΨ1_diagonalz = T4AQuantics.makesitediagonal(prjΨ1, "y")
-            sites_diagonalz = Iterators.flatten(T4APartitionedMPSs.siteinds(prjΨ1_diagonalz))
+            sites_diagonalz = Iterators.flatten(T4APartitionedTT.siteinds(prjΨ1_diagonalz))
 
             psi_diag = prod(prjΨ1_diagonalz.data)
             psi = prod(prjΨ1.data)

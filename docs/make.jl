@@ -7,6 +7,7 @@ makedocs(;
     modules=[T4AQuantics],
     authors="Hiroshi Shinaoka <h.shinaoka@gmail.com> and contributors",
     sitename="T4AQuantics.jl",
+    remotes=nothing,
     format=Documenter.HTML(;
         canonical="https://github.com/tensor4all/T4AQuantics.jl",
         edit_link="main",

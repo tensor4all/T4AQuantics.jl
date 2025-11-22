@@ -1,5 +1,5 @@
-# Integration with T4APartitionedMPSs
-# This file contains methods for T4APartitionedMPSs types (SubDomainMPS, PartitionedMPS)
+# Integration with T4APartitionedTT
+# This file contains methods for T4APartitionedTT types (SubDomainTT, PartitionedTT)
 
 using ITensors
 import ITensors
@@ -8,20 +8,20 @@ import ITensors.NDTensors: Tensor, BlockSparseTensor, blockview
 using T4AITensorCompat: TensorTrain
 using T4AITensorCompat: findsite, linkinds, linkind, findsites
 
-import T4APartitionedMPSs: T4APartitionedMPSs, SubDomainMPS, PartitionedMPS, isprojectedat,
+import T4APartitionedTT: T4APartitionedTT, SubDomainTT, PartitionedTT, isprojectedat,
                         project
 
-function makesitediagonal(subdmps::SubDomainMPS, site::Index)
+function makesitediagonal(subdmps::SubDomainTT, site::Index)
     return _makesitediagonal(subdmps, site; baseplev=0)
 end
 
-function makesitediagonal(subdmps::SubDomainMPS, sites::AbstractVector{Index})
+function makesitediagonal(subdmps::SubDomainTT, sites::AbstractVector{Index})
     return _makesitediagonal(subdmps, sites; baseplev=0)
 end
 
-function makesitediagonal(subdmps::SubDomainMPS, tag::String)
-    mps_diagonal = makesitediagonal(TensorTrain(subdmps), tag)
-    subdmps_diagonal = SubDomainMPS(mps_diagonal)
+function makesitediagonal(subdmps::SubDomainTT, tag::String)
+    tt_diagonal = makesitediagonal(TensorTrain(subdmps), tag)
+    subdmps_diagonal = SubDomainTT(tt_diagonal)
 
     target_sites = findallsiteinds_by_tag(
         unique(ITensors.noprime.(Iterators.flatten(siteinds(subdmps)))); tag=tag
@@ -38,7 +38,7 @@ function makesitediagonal(subdmps::SubDomainMPS, tag::String)
 end
 
 function _makesitediagonal(
-        subdmps::SubDomainMPS, sites::AbstractVector{Index{IndsT}}; baseplev=0
+        subdmps::SubDomainTT, sites::AbstractVector{Index{IndsT}}; baseplev=0
 ) where {IndsT}
     M_ = deepcopy(TensorTrain(subdmps))
     for site in sites
@@ -48,12 +48,12 @@ function _makesitediagonal(
     return project(M_, subdmps.projector)
 end
 
-function _makesitediagonal(subdmps::SubDomainMPS, site::Index; baseplev=0)
+function _makesitediagonal(subdmps::SubDomainTT, site::Index; baseplev=0)
     return _makesitediagonal(subdmps, [site]; baseplev=baseplev)
 end
 
 function extractdiagonal(
-        subdmps::SubDomainMPS, sites::AbstractVector{Index{IndsT}}
+        subdmps::SubDomainTT, sites::AbstractVector{Index{IndsT}}
 ) where {IndsT}
     tensors = collect(subdmps.data)
     for i in eachindex(tensors)
@@ -73,55 +73,55 @@ function extractdiagonal(
             delete!(projector.data, site')
         end
     end
-    return SubDomainMPS(TensorTrain(Vector{ITensor}(tensors)), projector)
+    return SubDomainTT(TensorTrain(Vector{ITensor}(tensors)), projector)
 end
 
-function extractdiagonal(subdmps::SubDomainMPS, site::Index{IndsT}) where {IndsT}
+function extractdiagonal(subdmps::SubDomainTT, site::Index{IndsT}) where {IndsT}
     return extractdiagonal(subdmps, [site])
 end
 
-function extractdiagonal(subdmps::SubDomainMPS, tag::String)::SubDomainMPS
+function extractdiagonal(subdmps::SubDomainTT, tag::String)::SubDomainTT
     targetsites = findallsiteinds_by_tag(
-        unique(ITensors.noprime.(T4APartitionedMPSs._allsites(subdmps))); tag=tag
+        unique(ITensors.noprime.(T4APartitionedTTs._allsites(subdmps))); tag=tag
     )
     return extractdiagonal(subdmps, targetsites)
 end
 
-function rearrange_siteinds(subdmps::SubDomainMPS, sites)
-    return T4APartitionedMPSs.rearrange_siteinds(subdmps, sites)
+function rearrange_siteinds(subdmps::SubDomainTT, sites)
+    return T4APartitionedTTs.rearrange_siteinds(subdmps, sites)
 end
 
-function rearrange_siteinds(partmps::PartitionedMPS, sites)
-    return T4APartitionedMPSs.rearrange_siteinds(partmps, sites)
+function rearrange_siteinds(partmps::PartitionedTT, sites)
+    return T4APartitionedTTs.rearrange_siteinds(partmps, sites)
 end
 
 """
-Make the PartitionedMPS diagonal for a given site index `s` by introducing a dummy index `s'`.
+Make the PartitionedTT diagonal for a given site index `s` by introducing a dummy index `s'`.
 """
-function makesitediagonal(obj::PartitionedMPS, site)
-    return PartitionedMPS([_makesitediagonal(prjmps, site; baseplev=0)
+function makesitediagonal(obj::PartitionedTT, site)
+    return PartitionedTT([_makesitediagonal(prjmps, site; baseplev=0)
                            for prjmps in values(obj)])
 end
 
-function _makesitediagonal(obj::PartitionedMPS, site; baseplev=0)
-    return PartitionedMPS([_makesitediagonal(prjmps, site; baseplev=baseplev)
+function _makesitediagonal(obj::PartitionedTT, site; baseplev=0)
+    return PartitionedTT([_makesitediagonal(prjmps, site; baseplev=baseplev)
                            for prjmps in values(obj)])
 end
 
 """
-Extract diagonal of the PartitionedMPS for `s`, `s'`, ... for a given site index `s`,
+Extract diagonal of the PartitionedTT for `s`, `s'`, ... for a given site index `s`,
 where `s` must have a prime level of 0.
 """
-function extractdiagonal(obj::PartitionedMPS, site)
-    return PartitionedMPS([extractdiagonal(prjmps, site) for prjmps in values(obj)])
+function extractdiagonal(obj::PartitionedTT, site)
+    return PartitionedTT([extractdiagonal(prjmps, site) for prjmps in values(obj)])
 end
 
 """
 By default, elementwise multiplication will be performed.
 """
 function automul(
-        M1::PartitionedMPS,
-        M2::PartitionedMPS;
+        M1::PartitionedTT,
+        M2::PartitionedTT;
         tag_row::String="",
         tag_shared::String="",
         tag_col::String="",
@@ -155,7 +155,7 @@ function automul(
     M2 = rearrange_siteinds(
         M2, combinesites(sites_M2_diag, Vector{Index{Int}}(sites_shared), Vector{Index{Int}}(sites_col)))
 
-    M = T4APartitionedMPSs.contract(M1, M2; alg=alg, kwargs...)
+    M = T4APartitionedTTs.contract(M1, M2; alg=alg, kwargs...)
 
     M = extractdiagonal(M, sites1_ewmul)
 
@@ -174,11 +174,11 @@ function automul(
             end
         end
     end
-    return T4APartitionedMPSs.truncate(
+    return T4APartitionedTTs.truncate(
         rearrange_siteinds(M, ressites); cutoff=cutoff, maxdim=maxdim)
 end
 
-function _findallsiteinds_by_tag(M::PartitionedMPS; tag::String="")
+function _findallsiteinds_by_tag(M::PartitionedTT; tag::String="")
     return findallsiteinds_by_tag(only.(siteinds(M)); tag=tag)
 end
 

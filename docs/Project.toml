@@ -1,3 +1,4 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+T4APartitionedTT = "7ada5264-53d5-494a-9572-4199565888e0"
 T4AQuantics = "99202d80-6772-4c79-995b-f2660cf2bd6d"

@@ -122,7 +122,7 @@ end
 
 @testitem "mul_tests.jl/batchedmatmul" begin
     using Test
-    import T4APartitionedMPSs: project, Projector, SubDomainMPS, PartitionedMPS, isprojectedat
+    import T4APartitionedTT: project, Projector, SubDomainTT, PartitionedTT, isprojectedat
     import T4AQuantics
     using ITensors
     import T4AITensorCompat: random_mps, TensorTrain, siteinds
@@ -170,7 +170,7 @@ end
         @test ab_arr ≈ ab_arr_reconst
     end
 
-    @testset "PartitionedMPS" begin
+    @testset "PartitionedTT" begin
         @testset "batchedmatmul" for T in [Float64, ComplexF64]
             """
             C(x, z, k) = sum_y A(x, y, k) * B(y, z, k)
@@ -198,14 +198,14 @@ end
                 ab_arr[:, :, k] .= a_arr[:, :, k] * b_arr[:, :, k]
             end
 
-            a_ = PartitionedMPS([
+            a_ = PartitionedTT([
                 project(a, Projector(Dict(sx[1] => 1, sy[1] => 1))),
                 project(a, Projector(Dict(sx[1] => 1, sy[1] => 2))),
                 project(a, Projector(Dict(sx[1] => 2, sy[1] => 1))),
                 project(a, Projector(Dict(sx[1] => 2, sy[1] => 2)))
             ])
 
-            b_ = PartitionedMPS([
+            b_ = PartitionedTT([
                 project(b, Projector(Dict(sy[1] => 1, sz[1] => 1))),
                 project(b, Projector(Dict(sy[1] => 1, sz[1] => 2))),
                 project(b, Projector(Dict(sy[1] => 2, sz[1] => 1))),

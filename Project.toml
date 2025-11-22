@@ -12,7 +12,7 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 SparseIR = "4fe2279e-80f0-4adb-8463-ee114ff56b7d"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 T4AITensorCompat = "864b39ca-388c-4f43-a593-a1076cf4b253"
-T4APartitionedMPSs = "f7a3e09c-877e-4116-af24-45397c1413c2"
+T4APartitionedTT = "7ada5264-53d5-494a-9572-4199565888e0"
 TensorCrossInterpolation = "b261b2ec-6378-4871-b32e-9173bb050604"
 
 [compat]
@@ -20,7 +20,7 @@ EllipsisNotation = "1"
 QuanticsTCI = "0.7"
 SparseIR = "^0.96, 0.97, 1"
 StaticArrays = "1"
-T4APartitionedMPSs = "0.7.3"
+T4APartitionedTT = "0.8"
 julia = "1"
 
 [extras]
@@ -30,9 +30,9 @@ QuanticsTCI = "b11687fd-3a1c-4c41-97d0-998ab401d50e"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 ReTestItems = "817f1d60-ba6b-4fd5-9520-3cf149f6a823"
 SparseIR = "4fe2279e-80f0-4adb-8463-ee114ff56b7d"
-T4APartitionedMPSs = "f7a3e09c-877e-4116-af24-45397c1413c2"
+T4APartitionedTT = "7ada5264-53d5-494a-9572-4199565888e0"
 TensorCrossInterpolation = "b261b2ec-6378-4871-b32e-9173bb050604"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "Random", "ReTestItems", "Aqua", "T4APartitionedMPSs", "TensorCrossInterpolation", "QuanticsTCI", "QuanticsGrids", "SparseIR"]
+test = ["Test", "Random", "ReTestItems", "Aqua", "T4APartitionedTT", "TensorCrossInterpolation", "QuanticsTCI", "QuanticsGrids", "SparseIR"]

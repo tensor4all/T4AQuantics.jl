@@ -13,8 +13,8 @@ import LinearAlgebra: I, inv
 using StaticArrays
 import SparseArrays: sparse
 
-import QuanticsTCI
-import TensorCrossInterpolation as TCI
+import T4AQuanticsTCI
+import T4ATensorCI as TCI
 import T4APartitionedTT
 using T4AITensorCompat: contract, Algorithm, apply, product
 

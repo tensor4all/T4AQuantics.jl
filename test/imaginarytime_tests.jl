@@ -7,15 +7,15 @@
     import SparseIR: Fermionic, Bosonic, FermionicFreq, valueim
 
     import T4AITensorCompat: TensorTrain
-    # Conditionally import QuanticsGrids and QuanticsTCI
+    # Conditionally import QuanticsGrids and T4AQuanticsTCI
     try
         import QuanticsGrids as QG
-        import QuanticsTCI: quanticscrossinterpolate
+        import T4AQuanticsTCI: quanticscrossinterpolate
         has_qg = true
     catch
         has_qg = false
     end
-    import TensorCrossInterpolation as TCI
+    import T4ATensorCI as TCI
 
     function _test_data_imaginarytime(nbit, β)
         ω = 0.5
@@ -94,12 +94,12 @@
 
 
     @testset "ImaginaryTimeFT.to_tau with large R" begin
-        # Skip this test if QuanticsGrids or QuanticsTCI is not available
+        # Skip this test if QuanticsGrids or T4AQuanticsTCI is not available
         try
             import QuanticsGrids as QG
-            import QuanticsTCI: quanticscrossinterpolate
+            import T4AQuanticsTCI: quanticscrossinterpolate
         catch
-            @test_skip "QuanticsGrids or QuanticsTCI not available"
+            @test_skip "QuanticsGrids or T4AQuanticsTCI not available"
             return
         end
         
@@ -136,7 +136,7 @@
             ComplexF64, inv_iwn_tci, ngrid; tolerance=tol, maxbonddim=maxdim_TCI)
 
         inv_iwn_tt = TCI.TensorTrain(qtci2.tci)
-        # Convert TensorCrossInterpolation.TensorTrain to T4AITensorCompat.TensorTrain
+        # Convert T4ATensorCI.TensorTrain to T4AITensorCompat.TensorTrain
         # using new constructor with core arrays
         tt_cores = TCI.sitetensors(inv_iwn_tt)
         iwmps = TensorTrain(tt_cores; sites=sitesiω)

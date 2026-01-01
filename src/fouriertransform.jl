@@ -28,8 +28,8 @@ function _qft(sites; cutoff::Float64=1e-25, sign::Int=1)
     R > 1 || error("The number of bits must be greater than 1")
 
     sites_MPO = collect.(zip(prime.(sites), sites))
-    fouriertt = QuanticsTCI.quanticsfouriermpo(R; sign=Float64(sign), normalize=true)
-    # Convert TCI.TensorTrain to T4AITensorCompat.TensorTrain using new constructor
+    fouriertt = T4AQuanticsTCI.quanticsfouriermpo(R; sign=Float64(sign), normalize=true)
+    # Convert T4ATensorCI.TensorTrain to T4AITensorCompat.TensorTrain using new constructor
     tt_cores = TCI.sitetensors(fouriertt)
     M = TensorTrain(tt_cores; sites=sites_MPO)
 
